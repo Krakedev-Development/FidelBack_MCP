@@ -78,6 +78,16 @@ export class ProcessInboundMessageUseCase {
     return this.getOrCreateMemorySession(sessionId);
   }
 
+  private isWithinAdvisorHours(): boolean {
+    const hourStr = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Guayaquil',
+      hour: 'numeric',
+      hourCycle: 'h23',
+    }).format(new Date());
+    const hour = Number(hourStr) % 24;
+    return hour >= 8 && hour < 17;
+  }
+
   async setSessionStatus(
     sessionId: string,
     status: 'AI_ACTIVE' | 'HUMAN_ACTIVE' | 'CLOSED',
@@ -264,6 +274,7 @@ export class ProcessInboundMessageUseCase {
     session.extractedFields = llmOutput.extractedFields;
 
     const mcpExecutions: McpToolExecutionResult[] = [];
+    let handoffRequested = false;
 
     for (const toolCall of llmOutput.mcpToolCalls) {
       const execResult = await this.mcpRegistry.executeTool(toolCall.toolName, {
@@ -274,7 +285,16 @@ export class ProcessInboundMessageUseCase {
       mcpExecutions.push(execResult);
 
       if (toolCall.toolName === 'transferir_a_humano') {
-        session.status = 'HUMAN_ACTIVE';
+        handoffRequested = true;
+      }
+    }
+
+    const withinBusinessHours = this.isWithinAdvisorHours();
+    if (handoffRequested && !withinBusinessHours) {
+      const alreadyHasScheduleNotice =
+        llmOutput.replyText.includes('8:00') || llmOutput.replyText.includes('5:00');
+      if (!alreadyHasScheduleNotice) {
+        llmOutput.replyText = `${llmOutput.replyText}\n\n📌 Ten en cuenta que nuestros asesores atienden de 8:00 a.m. a 5:00 p.m., por lo que tu solicitud ya quedó asignada y un asesor se comunicará contigo dentro del horario establecido.`;
       }
     }
 
@@ -342,6 +362,9 @@ export class ProcessInboundMessageUseCase {
       intentJustification: llmOutput.intentJustification,
       extractedFields: session.extractedFields,
       nextAction: llmOutput.nextAction,
+      handoffRequested,
+      handoffCategory: llmOutput.handoffCategory || (handoffRequested ? 'SALES_REQUEST' : null),
+      withinBusinessHours,
       incrementalSummary: session.incrementalSummary,
       summaryUpdated,
       mcpExecutions,

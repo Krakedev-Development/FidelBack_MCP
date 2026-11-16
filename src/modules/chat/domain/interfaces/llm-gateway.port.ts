@@ -38,6 +38,7 @@ export interface LlmTurnOutput {
   intentJustification: string;
   extractedFields: StructuredExtractionItem[];
   nextAction: string;
+  handoffCategory?: 'SUPPORT_OR_FRICTION' | 'SALES_REQUEST' | null;
   mcpToolCalls: RequestedMcpToolCall[];
   inputTokens: number;
   outputTokens: number;

@@ -272,25 +272,16 @@ export class McpRegistryService {
           const sessionId = String(args.sessionId || 'session_local');
           const reason = String(args.reason || 'Solicitud de atención personalizada');
 
-          try {
-            await this.prisma.conversation.updateMany({
-              where: { sessionId },
-              data: { controlState: 'HUMAN_ACTIVE' },
-            });
-          } catch (dbErr) {
-            this.logger.debug(`Modo sin DB activa en transferir_a_humano: ${(dbErr as Error).message}`);
-          }
-
           const result: McpToolExecutionResult = {
             toolName,
             success: true,
             timestamp,
             data: {
               sessionId,
-              newStatus: 'HUMAN_ACTIVE',
+              newStatus: 'PENDING_HANDOFF',
               reason,
             },
-            message: `Sesión ${sessionId} transferida a asesor humano (HUMAN_ACTIVE). Motivo: ${reason}`,
+            message: `Escalamiento a asesor humano solicitado para sesión ${sessionId} (Fidel activo hasta respuesta del asesor). Motivo: ${reason}`,
           };
           this.recordExecution(result);
           return result;
