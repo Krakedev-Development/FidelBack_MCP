@@ -111,6 +111,7 @@ Devuelve SIEMPRE un objeto JSON válido con la siguiente estructura exacta:
     { "key": "Nombre del campo requerido", "value": "Valor extraído o 'Pendiente'", "status": "captured" | "partial" | "missing" }
   ],
   "siguiente_accion": "Siguiente paso comercial recomendado",
+  "motivo_escalamiento": "SUPPORT_OR_FRICTION" | "SALES_REQUEST" | null,
   "mcp_tool_calls": [
     {
       "toolName": "cotizar_descuento_grupo" | "agendar_cita" | "registrar_lead_crm" | "transferir_a_humano",
@@ -123,7 +124,9 @@ REGLAS MCP Y DE COMPORTAMIENTO:
 - Nunca te presentes como un bot o IA a menos que el cliente lo pregunte directamente.
 - Si el cliente pregunta precios de Academia Krakedev o Cursos/Certificaciones AWS, incluye "cotizar_descuento_grupo" en "mcp_tool_calls".
 - Para Software a la Medida está PROHIBIDO dar precios cerrados; indaga en su necesidad para reunión con especialista.
-- REGLA DE ORO DE TRASPASO A HUMANO: Si el cliente pide hablar explícitamente con un asesor humano, muestra molestia/fricción o manifiesta explícitamente intención de agendar una cita o reunión, incluye obligatoriamente "transferir_a_humano" en "mcp_tool_calls" y pon en "respuesta_chat": "¡Perfecto! Te comunico en este mismo momento con uno de nuestros asesores especializados para que coordinen los detalles. Dame un segundo por favor 🤝".
+- REGLA DE ORO DE TRASPASO A HUMANO:
+  - Si el cliente muestra molestia/inconformidad, pregunta por el avance o proceso de su proyecto de desarrollo en curso, o busca soporte/aclarar dudas post-venta, incluye "transferir_a_humano" en "mcp_tool_calls" y pon "motivo_escalamiento": "SUPPORT_OR_FRICTION".
+  - Si el cliente pide explícitamente hablar con un asesor comercial o agendar una cita/reunión, incluye "transferir_a_humano" en "mcp_tool_calls", pon "motivo_escalamiento": "SALES_REQUEST", y pon en "respuesta_chat": "¡Perfecto! Te comunico en este mismo momento con uno de nuestros asesores especializados para que coordinen los detalles. Dame un segundo por favor 🤝".
 - Si el cliente cambia de producto en la conversación, actualiza "linea_detectada" al nuevo producto y llena "extraccion" con los campos de ese nuevo producto.
 `;
 
@@ -300,6 +303,11 @@ REGLAS MCP Y DE COMPORTAMIENTO:
             }));
 
       const rawTools = Array.isArray(parsed.mcp_tool_calls) ? parsed.mcp_tool_calls : [];
+      const rawHandoffCat = String(parsed.motivo_escalamiento || '').trim();
+      const handoffCategory: 'SUPPORT_OR_FRICTION' | 'SALES_REQUEST' | null =
+        rawHandoffCat === 'SUPPORT_OR_FRICTION' || rawHandoffCat === 'SALES_REQUEST'
+          ? rawHandoffCat
+          : null;
 
       return {
         replyText: String(
@@ -317,6 +325,7 @@ REGLAS MCP Y DE COMPORTAMIENTO:
         nextAction: String(
           parsed.siguiente_accion || 'Continuar calificación consultiva del prospecto.',
         ),
+        handoffCategory,
         mcpToolCalls: rawTools
           .filter((t: Record<string, unknown>) => typeof t?.toolName === 'string')
           .map((t: Record<string, unknown>) => ({
@@ -340,6 +349,7 @@ REGLAS MCP Y DE COMPORTAMIENTO:
           status: 'missing' as const,
         })),
         nextAction: 'Indagar requerimiento principal.',
+        handoffCategory: null,
         mcpToolCalls: [],
       };
     }
