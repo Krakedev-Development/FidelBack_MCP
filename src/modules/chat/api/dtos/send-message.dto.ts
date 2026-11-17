@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsBoolean, IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import { ProductLineKey } from '../../domain/interfaces/llm-gateway.port';
+import { IsArray, IsBoolean, IsIn, IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator';
+import { AdContextInput, ProductLineKey } from '../../domain/interfaces/llm-gateway.port';
 
 export class SendMessageDto {
   @ApiProperty({ example: 'session-whatsapp-001' })
@@ -70,6 +70,11 @@ export class SendMessageDto {
   @IsString()
   @IsOptional()
   trainerName?: string;
+
+  @ApiPropertyOptional({ description: 'Metadatos del anuncio publicitario de Meta Ads (texto e imagen)' })
+  @IsObject()
+  @IsOptional()
+  adContext?: AdContextInput;
 }
 
 export class TestLlmConnectionDto {
