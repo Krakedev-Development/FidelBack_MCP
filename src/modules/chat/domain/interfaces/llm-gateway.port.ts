@@ -19,14 +19,24 @@ export interface RequestedMcpToolCall {
   arguments: Record<string, unknown>;
 }
 
+export interface AdContextInput {
+  sourceId?: string;
+  headline?: string;
+  body?: string;
+  welcomeText?: string;
+  imageUrl?: string;
+  campaignName?: string;
+}
+
 export interface LlmTurnInput {
   provider: 'gemini' | 'openai';
   model: string;
   apiKey?: string;
   systemPrompt: string;
-  activeProductKey: ProductLineKey;
+  activeProductKey: ProductLineKey | null;
   requiredFields: string[];
   incrementalSummary: string;
+  adSummary?: string;
   recentHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
   userMessage: string;
 }

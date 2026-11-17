@@ -10,10 +10,87 @@ import {
 @Injectable()
 export class LlmGatewayAdapter {
   private readonly logger = new Logger(LlmGatewayAdapter.name);
+  private readonly adVisionCache = new Map<string, string>();
 
   constructor(
     private readonly configService: ConfigService<EnvironmentVariables, true>,
   ) {}
+
+  async analyzeAdImage(
+    imageUrl: string,
+    cacheKey?: string,
+    overrideKey?: string,
+  ): Promise<string | null> {
+    const cleanUrl = imageUrl?.trim();
+    if (!cleanUrl) return null;
+
+    const key = (cacheKey || cleanUrl).trim();
+    if (this.adVisionCache.has(key)) {
+      return this.adVisionCache.get(key)!;
+    }
+
+    try {
+      const apiKey = this.resolveApiKey('gemini', overrideKey);
+      const imgRes = await fetch(cleanUrl, {
+        signal: AbortSignal.timeout(7000),
+      });
+      if (!imgRes.ok) {
+        this.logger.warn(`No se pudo descargar imagen de anuncio (${imgRes.status}): ${cleanUrl}`);
+        return null;
+      }
+
+      const arrayBuffer = await imgRes.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
+      const mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  text: 'Analiza esta imagen de un anuncio publicitario y describe en 1 o 2 oraciones claras qué curso, certificación o servicio específico promociona (transcribe los textos clave visibles en la imagen, como AWS, certificaciones AI/Cloud/Solutions Architect, Krakedev, Software a la Medida, etc.). Sé directo.',
+                },
+                {
+                  inlineData: {
+                    mimeType,
+                    data: base64,
+                  },
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            maxOutputTokens: 150,
+            temperature: 0.1,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        this.logger.warn(`Gemini Vision anuncio HTTP ${res.status}: ${errBody.slice(0, 150)}`);
+        return null;
+      }
+
+      const data = (await res.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      };
+      const summary = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+      if (summary) {
+        this.adVisionCache.set(key, summary);
+        this.logger.log(`🖼️ Anuncio visual cacheado [${key}]: ${summary}`);
+      }
+      return summary;
+    } catch (err) {
+      this.logger.warn(`Error analizando imagen del anuncio: ${(err as Error).message}`);
+      return null;
+    }
+  }
 
   resolveApiKey(provider: 'gemini' | 'openai', overrideKey?: string): string {
     const trimmed = overrideKey?.trim();
@@ -130,7 +207,15 @@ REGLAS MCP Y DE COMPORTAMIENTO:
 - Si el cliente cambia de producto en la conversación, actualiza "linea_detectada" al nuevo producto y llena "extraccion" con los campos de ese nuevo producto.
 `;
 
-    const fullSystemPrompt = `${input.systemPrompt}\n\nMEMORIA INCREMENTAL PREVIA:\n${input.incrementalSummary || 'Sin resumen previo.'}\n\nLÍNEA ACTIVA ACTUAL: ${input.activeProductKey}\nCAMPOS DE EXTRACCIÓN DE LÍNEA ACTIVA: ${input.requiredFields.join(', ')}\n${jsonInstruction}`;
+    const adBlock = input.adSummary
+      ? `\nORIGEN PUBLICITARIO DEL LEAD (META ADS — TEXTO + IMAGEN DEL ANUNCIO):\n${input.adSummary}\nINSTRUCCIÓN CRÍTICA DE ANUNCIO: El cliente llegó por este anuncio. Identifica inmediatamente la línea anunciada (ej. si menciona AWS -> "aws_certifications", Krakedev -> "krakedev_academy", Software -> "custom_software", IA -> "ai_assistants_b2b") y enfoca tu saludo y primera pregunta de calificación directamente en ese producto, SIN preguntarle qué producto busca ni asumir otra línea.\n`
+      : '';
+
+    const activeLineBlock = input.activeProductKey
+      ? `LÍNEA ACTIVA ACTUAL: ${input.activeProductKey}\nCAMPOS DE EXTRACCIÓN DE LÍNEA ACTIVA: ${input.requiredFields.join(', ')}`
+      : `LÍNEA ACTIVA ACTUAL: Ninguna preseleccionada (Detecta la línea según el anuncio o el mensaje del cliente; si el cliente solo saluda y NO hay anuncio ni mención de producto, pregúntale amablemente en cuál de nuestras soluciones está interesado en vez de asumir "custom_software").`;
+
+    const fullSystemPrompt = `${input.systemPrompt}\n\nMEMORIA INCREMENTAL PREVIA:\n${input.incrementalSummary || 'Sin resumen previo.'}\n${adBlock}\n${activeLineBlock}\n${jsonInstruction}`;
 
     if (input.provider === 'gemini') {
       const cleanModel = (input.model || 'gemini-flash-lite-latest').replace(/^models\//, '');
@@ -174,7 +259,11 @@ REGLAS MCP Y DE COMPORTAMIENTO:
       };
 
       const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-      const parsed = this.safeParseJson(rawText, input.activeProductKey, input.requiredFields);
+      const parsed = this.safeParseJson(
+        rawText,
+        input.activeProductKey || 'custom_software',
+        input.requiredFields,
+      );
 
       return {
         ...parsed,
@@ -219,7 +308,11 @@ REGLAS MCP Y DE COMPORTAMIENTO:
     };
 
     const rawText = data.choices?.[0]?.message?.content || '{}';
-    const parsed = this.safeParseJson(rawText, input.activeProductKey, input.requiredFields);
+    const parsed = this.safeParseJson(
+      rawText,
+      input.activeProductKey || 'custom_software',
+      input.requiredFields,
+    );
 
     return {
       ...parsed,

@@ -9,6 +9,7 @@ import {
 import { CrmService } from '../../../crm/application/services/crm.service';
 import { LlmGatewayAdapter } from '../../infrastructure/adapters/llm-gateway.adapter';
 import {
+  AdContextInput,
   ProductLineKey,
   StructuredExtractionItem,
 } from '../../domain/interfaces/llm-gateway.port';
@@ -17,7 +18,8 @@ export interface InMemorySessionState {
   sessionId: string;
   tenantSlug: string;
   status: 'AI_ACTIVE' | 'HUMAN_ACTIVE' | 'CLOSED';
-  activeProductKey: ProductLineKey;
+  activeProductKey: ProductLineKey | null;
+  adSummary?: string;
   incrementalSummary: string;
   messagesCount: number;
   extractedFields: StructuredExtractionItem[];
@@ -42,7 +44,7 @@ export class ProcessInboundMessageUseCase {
 
   getOrCreateMemorySession(
     sessionId: string,
-    initialProductKey: ProductLineKey = 'custom_software',
+    initialProductKey: ProductLineKey | null = null,
     tenantSlug = 'clearminds',
   ): InMemorySessionState {
     const existing = this.sessions.get(sessionId);
@@ -51,10 +53,11 @@ export class ProcessInboundMessageUseCase {
       return existing;
     }
 
-    const resource =
-      CLEARMINDS_MCP_RESOURCES.find(
-        (r: McpResourceDefinition) => r.productKey === initialProductKey,
-      ) ?? CLEARMINDS_MCP_RESOURCES[0];
+    const resource = initialProductKey
+      ? CLEARMINDS_MCP_RESOURCES.find(
+          (r: McpResourceDefinition) => r.productKey === initialProductKey,
+        ) ?? null
+      : null;
 
     const created: InMemorySessionState = {
       sessionId,
@@ -63,11 +66,13 @@ export class ProcessInboundMessageUseCase {
       activeProductKey: initialProductKey,
       incrementalSummary: '',
       messagesCount: 0,
-      extractedFields: resource.requiredFields.map((key: string) => ({
-        key,
-        value: 'Pendiente',
-        status: 'missing',
-      })),
+      extractedFields: resource
+        ? resource.requiredFields.map((key: string) => ({
+            key,
+            value: 'Pendiente',
+            status: 'missing',
+          }))
+        : [],
       history: [],
     };
     this.sessions.set(sessionId, created);
@@ -86,6 +91,41 @@ export class ProcessInboundMessageUseCase {
     }).format(new Date());
     const hour = Number(hourStr) % 24;
     return hour >= 8 && hour < 17;
+  }
+
+  private async buildAdSummary(adContext: AdContextInput, apiKey?: string): Promise<string> {
+    const parts: string[] = [];
+
+    if (adContext.campaignName?.trim()) {
+      parts.push(`Campaña: "${adContext.campaignName.trim()}"`);
+    }
+    if (
+      adContext.headline?.trim() &&
+      !/^(https?:\/\/)?(api\.whatsapp\.com|wa\.me|facebook\.com)/i.test(adContext.headline.trim())
+    ) {
+      parts.push(`Título del anuncio: "${adContext.headline.trim()}"`);
+    }
+    if (adContext.body?.trim()) {
+      parts.push(`Texto del anuncio: "${adContext.body.trim()}"`);
+    }
+    if (
+      adContext.welcomeText?.trim() &&
+      !adContext.welcomeText.includes('Completa el siguiente formulario para registrarte')
+    ) {
+      parts.push(`Saludo del anuncio: "${adContext.welcomeText.trim()}"`);
+    }
+    if (adContext.imageUrl?.trim()) {
+      const visualText = await this.llmGateway.analyzeAdImage(
+        adContext.imageUrl.trim(),
+        adContext.sourceId,
+        apiKey,
+      );
+      if (visualText) {
+        parts.push(`Contenido visual de la imagen del anuncio: "${visualText}"`);
+      }
+    }
+
+    return parts.join(' | ');
   }
 
   async setSessionStatus(
@@ -127,6 +167,7 @@ export class ProcessInboundMessageUseCase {
     customSystemPrompt?: string;
     trainingMode?: boolean;
     trainerName?: string;
+    adContext?: AdContextInput;
   }) {
     // 0. Resolver empresa (Tenant) por x-tenant-key o tenantSlug
     const resolvedTenantSlug = await this.crmService.resolveTenantSlug(
@@ -136,12 +177,19 @@ export class ProcessInboundMessageUseCase {
 
     const session = this.getOrCreateMemorySession(
       params.sessionId,
-      params.activeProductKey || 'custom_software',
+      params.activeProductKey ?? null,
       resolvedTenantSlug,
     );
 
     if (params.activeProductKey && params.activeProductKey !== session.activeProductKey) {
       session.activeProductKey = params.activeProductKey;
+    }
+
+    if (params.adContext && !session.adSummary) {
+      const summary = await this.buildAdSummary(params.adContext, params.apiKey);
+      if (summary) {
+        session.adSummary = summary;
+      }
     }
 
     const incomingRole = params.senderRole || 'user';
@@ -188,10 +236,11 @@ export class ProcessInboundMessageUseCase {
             .join('\n\n')
         : 'Usa estrictamente la información y datos contextuales proporcionados en la conversación.';
 
-    const activeResource =
-      CLEARMINDS_MCP_RESOURCES.find(
-        (r: McpResourceDefinition) => r.productKey === session.activeProductKey,
-      ) ?? CLEARMINDS_MCP_RESOURCES[0];
+    const activeResource = session.activeProductKey
+      ? CLEARMINDS_MCP_RESOURCES.find(
+          (r: McpResourceDefinition) => r.productKey === session.activeProductKey,
+        ) ?? null
+      : null;
 
     const activeRulesBlock = await this.crmService.getActiveTrainingRulesBlock(resolvedTenantSlug);
 
@@ -262,16 +311,31 @@ export class ProcessInboundMessageUseCase {
       apiKey: params.apiKey,
       systemPrompt,
       activeProductKey: session.activeProductKey,
-      requiredFields: activeResource.requiredFields,
+      requiredFields: activeResource ? activeResource.requiredFields : [],
       incrementalSummary: session.incrementalSummary,
+      adSummary: session.adSummary,
       recentHistory,
       userMessage: params.message,
     });
 
     const previousProductKey = session.activeProductKey;
-    const productSwitched = llmOutput.detectedProductKey !== previousProductKey;
+    const productSwitched =
+      previousProductKey !== null && llmOutput.detectedProductKey !== previousProductKey;
     session.activeProductKey = llmOutput.detectedProductKey;
-    session.extractedFields = llmOutput.extractedFields;
+    if (llmOutput.extractedFields.length > 0) {
+      session.extractedFields = llmOutput.extractedFields;
+    } else if (llmOutput.detectedProductKey) {
+      const detectedResource = CLEARMINDS_MCP_RESOURCES.find(
+        (r: McpResourceDefinition) => r.productKey === llmOutput.detectedProductKey,
+      );
+      session.extractedFields = detectedResource
+        ? detectedResource.requiredFields.map((key: string) => ({
+            key,
+            value: 'Pendiente',
+            status: 'missing' as const,
+          }))
+        : [];
+    }
 
     const mcpExecutions: McpToolExecutionResult[] = [];
     let handoffRequested = false;
