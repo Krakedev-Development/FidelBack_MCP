@@ -171,4 +171,20 @@ export class TokenIssuerService {
       existing.isRevoked = true;
     }
   }
+
+  async getUserProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException('Usuario no encontrado o inactivo.');
+    }
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.fullName,
+      fullName: user.fullName,
+      role: user.role,
+      roles: [user.role],
+      tenantSlug: user.tenantSlug || 'clearminds',
+    };
+  }
 }

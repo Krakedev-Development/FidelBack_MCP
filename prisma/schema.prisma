@@ -115,8 +115,23 @@ model Lead {
   objection         String       @default("ninguna")
   suggestedAction   String       @default("continuar_cualificacion")
   extractedDataJson String       @default("{}") @db.Text
+  notes             LeadNote[]
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
+}
+
+model LeadNote {
+  id          String   @id @default(uuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  authorEmail String
+  authorName  String
+  content     String   @db.Text
+  followUpAt  String?
+  operationId String?  @unique
+  createdAt   DateTime @default(now())
+
+  @@index([leadId])
 }
 
 model Appointment {

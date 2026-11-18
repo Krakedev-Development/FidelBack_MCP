@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
@@ -11,6 +12,10 @@ import {
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
+import {
+  AuthPayload,
+  CurrentUser,
+} from '../../../../common/decorators/current-user.decorator';
 import { Public } from '../../../../common/decorators/public.decorator';
 import { EnvironmentVariables } from '../../../../context/config/app.config';
 import { LoginDto } from '../dtos/login.dto';
@@ -57,21 +62,28 @@ export class AuthController {
 
     return {
       accessToken: result.accessToken,
-      user: result.user,
+      refreshToken: result.refreshToken,
+      user: {
+        ...result.user,
+        name: result.user.fullName,
+        roles: [result.user.role],
+      },
     };
   }
 
   @Public()
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Rotar Refresh Token desde cookie httpOnly y emitir nuevo Access Token' })
+  @ApiOperation({ summary: 'Rotar Refresh Token desde cookie httpOnly o body y emitir nuevo Access Token' })
   async refresh(
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const rawRefreshToken = req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined;
+    const bodyToken = (req.body as { refreshToken?: string } | undefined)?.refreshToken;
+    const rawRefreshToken =
+      (req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined) || bodyToken;
     if (!rawRefreshToken) {
-      throw new UnauthorizedException('No se encontró cookie refreshToken.');
+      throw new UnauthorizedException('No se encontró refreshToken.');
     }
 
     const result = await this.tokenIssuer.rotateRefreshToken(rawRefreshToken, {
@@ -83,8 +95,23 @@ export class AuthController {
 
     return {
       accessToken: result.accessToken,
-      user: result.user,
+      refreshToken: result.refreshToken,
+      user: {
+        ...result.user,
+        name: result.user.fullName,
+        roles: [result.user.role],
+      },
     };
+  }
+
+  @Get('me')
+  @ApiOperation({ summary: 'Obtener perfil del usuario autenticado (Contrato Front Universal)' })
+  async getMe(@CurrentUser() payload: AuthPayload) {
+    if (!payload?.sub) {
+      throw new UnauthorizedException('Sesión inválida.');
+    }
+    const user = await this.tokenIssuer.getUserProfile(payload.sub);
+    return { user };
   }
 
   @Post('logout')

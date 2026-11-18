@@ -17,9 +17,30 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.use(cookieParser());
 
+  // Permite conectar el Front Universal en /mcp y /auth/* sin prefijo /api manteniendo compatibilidad con /api/*
+  app.use((req: { url: string }, _res: unknown, next: () => void) => {
+    if (req.url === '/mcp' || req.url.startsWith('/mcp?') || req.url.startsWith('/auth/')) {
+      req.url = `/api${req.url}`;
+    }
+    next();
+  });
+
   app.enableCors({
     origin: true,
     credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'Mcp-Protocol-Version',
+      'Mcp-Session-Id',
+      'Last-Event-ID',
+      'X-Tenant-Id',
+      'x-tenant-key',
+      'x-tenant-id',
+    ],
+    exposedHeaders: ['Mcp-Session-Id', 'Mcp-Protocol-Version'],
   });
 
   app.useGlobalPipes(
