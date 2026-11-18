@@ -208,7 +208,9 @@ REGLAS MCP Y DE COMPORTAMIENTO:
 `;
 
     const adBlock = input.adSummary
-      ? `\nORIGEN PUBLICITARIO DEL LEAD (META ADS — TEXTO + IMAGEN DEL ANUNCIO):\n${input.adSummary}\nINSTRUCCIÓN CRÍTICA DE ANUNCIO: El cliente llegó por este anuncio. Identifica inmediatamente la línea anunciada (ej. si menciona AWS -> "aws_certifications", Krakedev -> "krakedev_academy", Software -> "custom_software", IA -> "ai_assistants_b2b") y enfoca tu saludo y primera pregunta de calificación directamente en ese producto, SIN preguntarle qué producto busca ni asumir otra línea.\n`
+      ? `\nORIGEN PUBLICITARIO DEL LEAD (META ADS — TEXTO + IMAGEN DEL ANUNCIO):\n${input.adSummary}\nINSTRUCCIÓN CRÍTICA DE ANUNCIO:
+- El cliente llegó por este anuncio. Identifica inmediatamente la línea anunciada (ej. si menciona AWS -> "aws_certifications", Krakedev -> "krakedev_academy", Software -> "custom_software", IA -> "ai_assistants_b2b").
+- Si el anuncio (texto o imagen) YA especifica un programa o certificación concreta (por ejemplo: "AWS Solutions Architect – Associate", "AI Practitioner", "Cloud Practitioner"), regístrala automáticamente como "captured" en "extraccion" y PROHIBIDO volver a preguntarle al cliente cuál certificación quiere. Asume directamente ese programa, dale la bienvenida sobre él (reconociendo cualquier promoción del anuncio como Black Friday si aparece) y pídele únicamente los datos que aún falten (ej. su nombre completo).\n`
       : '';
 
     const activeLineBlock = input.activeProductKey
