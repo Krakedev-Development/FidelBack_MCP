@@ -289,6 +289,19 @@ export class ProcessInboundMessageUseCase {
         createdAt: new Date().toISOString(),
       });
 
+      await this.persistTurnInSupabase({
+        sessionId: session.sessionId,
+        tenantId: tenantConfig.tenant.id,
+        productKey: session.activeProductKey,
+        controlState: session.status,
+        userMessage: params.message,
+        aiReply: trainingOut.reply,
+        intentLevel: 'MEDIO',
+        nextAction: 'Continuar roleplay / entrenamiento',
+        extractedFields: session.extractedFields,
+        mcpExecutions: [],
+      });
+
       return {
         sessionId: session.sessionId,
         tenantSlug: resolvedTenantSlug,
@@ -389,8 +402,8 @@ export class ProcessInboundMessageUseCase {
     });
     session.messagesCount += 1;
 
-    // Persistir conversación y mensajes en Supabase de manera asíncrona sin bloquear
-    void this.persistTurnInSupabase({
+    // Persistir conversación y mensajes en Supabase garantizando programación de seguimiento
+    await this.persistTurnInSupabase({
       sessionId: session.sessionId,
       tenantId: tenantConfig.tenant.id,
       productKey: session.activeProductKey,
@@ -448,7 +461,7 @@ export class ProcessInboundMessageUseCase {
   private async persistTurnInSupabase(data: {
     sessionId: string;
     tenantId: string;
-    productKey: string;
+    productKey: string | null;
     controlState: string;
     userMessage: string;
     aiReply: string;
@@ -458,9 +471,11 @@ export class ProcessInboundMessageUseCase {
     mcpExecutions: McpToolExecutionResult[];
   }): Promise<void> {
     try {
-      const validProductLine = await this.prisma.productLine.findUnique({
-        where: { id: data.productKey },
-      });
+      const validProductLine = data.productKey
+        ? await this.prisma.productLine.findUnique({
+            where: { id: data.productKey },
+          })
+        : null;
 
       const now = new Date();
       const firstFollowUpAt =
@@ -523,7 +538,7 @@ export class ProcessInboundMessageUseCase {
         },
       });
     } catch (err) {
-      this.logger.debug(`Error no bloqueante al persistir turno en Supabase: ${(err as Error).message}`);
+      this.logger.warn(`Error no bloqueante al persistir turno en Supabase: ${(err as Error).message}`);
     }
   }
 
