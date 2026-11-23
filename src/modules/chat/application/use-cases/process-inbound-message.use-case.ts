@@ -138,7 +138,10 @@ export class ProcessInboundMessageUseCase {
     try {
       await this.prisma.conversation.updateMany({
         where: { sessionId },
-        data: { controlState: status },
+        data: {
+          controlState: status,
+          ...(status === 'HUMAN_ACTIVE' ? { nextFollowUpAt: null } : {}),
+        },
       });
     } catch {
       // Fallback in-memory
@@ -459,17 +462,29 @@ export class ProcessInboundMessageUseCase {
         where: { id: data.productKey },
       });
 
+      const now = new Date();
+      const firstFollowUpAt =
+        data.controlState === 'AI_ACTIVE' ? new Date(now.getTime() + 15 * 60_000) : null;
+
       const conversation = await this.prisma.conversation.upsert({
         where: { sessionId: data.sessionId },
         update: {
           productLineId: validProductLine ? data.productKey : null,
           controlState: data.controlState,
+          followUpStage: 0,
+          lastCustomerMessageAt: now,
+          lastAiReplyAt: now,
+          nextFollowUpAt: firstFollowUpAt,
         },
         create: {
           sessionId: data.sessionId,
           tenantId: data.tenantId,
           productLineId: validProductLine ? data.productKey : null,
           controlState: data.controlState,
+          followUpStage: 0,
+          lastCustomerMessageAt: now,
+          lastAiReplyAt: now,
+          nextFollowUpAt: firstFollowUpAt,
         },
       });
 

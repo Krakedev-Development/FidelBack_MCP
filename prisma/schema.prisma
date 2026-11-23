@@ -66,21 +66,27 @@ model ProductLine {
 }
 
 model Conversation {
-  id            String        @id @default(uuid())
-  tenantId      String
-  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  productLineId String?
-  productLine   ProductLine?  @relation(fields: [productLineId], references: [id])
-  sessionId     String        @unique
-  channelType   String        @default("WEB_CHAT") // WEB_CHAT, WHATSAPP
-  controlState  String        @default("AI_ACTIVE") // AI_ACTIVE, HUMAN_ACTIVE, PENDING_HANDOFF
-  customerId    String?
-  messages      Message[]
-  summaries     Summary[]
-  lead          Lead?
-  appointments  Appointment[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id                    String        @id @default(uuid())
+  tenantId              String
+  tenant                Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  productLineId         String?
+  productLine           ProductLine?  @relation(fields: [productLineId], references: [id])
+  sessionId             String        @unique
+  channelType           String        @default("WEB_CHAT") // WEB_CHAT, WHATSAPP
+  controlState          String        @default("AI_ACTIVE") // AI_ACTIVE, HUMAN_ACTIVE, PENDING_HANDOFF
+  customerId            String?
+  followUpStage         Int           @default(0) // 0=inicial, 1=15m, 2=3h, 3=8h
+  lastCustomerMessageAt DateTime?
+  lastAiReplyAt         DateTime?
+  nextFollowUpAt        DateTime?
+  messages              Message[]
+  summaries             Summary[]
+  lead                  Lead?
+  appointments          Appointment[]
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@index([controlState, nextFollowUpAt])
 }
 
 model Message {

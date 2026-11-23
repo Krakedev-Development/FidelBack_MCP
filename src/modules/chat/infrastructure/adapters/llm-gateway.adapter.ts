@@ -595,4 +595,76 @@ Devuelve ÚNICAMENTE un JSON válido:
       };
     }
   }
+
+  async generateContextualFollowUp(input: {
+    stage: 1 | 2 | 3;
+    baseTemplate: string;
+    productName?: string | null;
+    extractedDataJson?: string | null;
+    suggestedAction?: string | null;
+    recentMessages: Array<{ senderType: string; content: string }>;
+  }): Promise<string> {
+    try {
+      const apiKey = this.resolveApiKey('gemini');
+      const historyText = input.recentMessages
+        .slice(-6)
+        .map((m) => `${m.senderType === 'CUSTOMER' ? 'Cliente' : 'Fidel'}: ${m.content}`)
+        .join('\n');
+
+      const prompt = [
+        'Eres Fidel, asesor comercial cercano, gentil y amable de Clear Minds / KrakeDev en WhatsApp.',
+        `Debes redactar un mensaje de seguimiento por inactividad (Etapa ${input.stage} de 3).`,
+        `Plantilla base obligatoria de referencia (conserva su tono gentil/divertido, propósito y estilo):\n"${input.baseTemplate}"`,
+        input.productName ? `Producto/programa conversado: ${input.productName}` : '',
+        input.extractedDataJson && input.extractedDataJson !== '{}' && input.extractedDataJson !== '[]'
+          ? `Datos capturados del cliente: ${input.extractedDataJson}`
+          : '',
+        input.suggestedAction ? `Siguiente acción sugerida: ${input.suggestedAction}` : '',
+        historyText ? `Últimos mensajes de la conversación:\n${historyText}` : '',
+        'REGLAS ESTRICTAS:',
+        '1. Adapta suavemente la plantilla base al tema que estaban conversando (por ejemplo mencionando brevemente el programa o duda pendiente), SIN salirte del contexto.',
+        '2. NO inventes precios, fechas, descuentos ni cambies de producto.',
+        '3. Mantén 1 o 2 frases cortas, naturales para WhatsApp, sin sonar insistente ni robótico.',
+        '4. Devuelve ÚNICAMENTE el texto final del mensaje listo para enviar.',
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            maxOutputTokens: 160,
+            temperature: 0.4,
+          },
+        }),
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (!res.ok) {
+        return input.baseTemplate;
+      }
+
+      const data = (await res.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      };
+      const generated = data.candidates?.[0]?.content?.parts?.[0]?.text
+        ?.replace(/^["']|["']$/g, '')
+        .trim();
+
+      if (!generated || generated.length < 15 || generated.length > 450) {
+        return input.baseTemplate;
+      }
+
+      return generated;
+    } catch (err) {
+      this.logger.warn(
+        `Fallback a plantilla literal de seguimiento (etapa ${input.stage}): ${(err as Error).message}`,
+      );
+      return input.baseTemplate;
+    }
+  }
 }
