@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Headers, Param, Patch, Post } from '@nes
 import { ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Public } from '../../../../common/decorators/public.decorator';
 import { CrmService } from '../../../crm/application/services/crm.service';
+import { FollowUpService } from '../../application/services/follow-up.service';
 import { ProcessInboundMessageUseCase } from '../../application/use-cases/process-inbound-message.use-case';
 import { LlmGatewayAdapter } from '../../infrastructure/adapters/llm-gateway.adapter';
 import {
@@ -20,6 +21,7 @@ export class ChatController {
     private readonly processInboundMessage: ProcessInboundMessageUseCase,
     private readonly llmGateway: LlmGatewayAdapter,
     private readonly crmService: CrmService,
+    private readonly followUpService: FollowUpService,
   ) {}
 
   @Public()
@@ -143,5 +145,29 @@ export class ChatController {
       history: dto.history,
       trainerName: dto.trainerName,
     });
+  }
+
+  @Public()
+  @Post('follow-ups/evaluate')
+  @ApiHeader({ name: 'x-tenant-key', required: false })
+  @ApiOperation({
+    summary:
+      'Evaluar y generar mensajes de seguimiento por inactividad (15m / 3h / 8h) listos para envío en canal externo',
+  })
+  async evaluateFollowUps(
+    @Headers('x-tenant-key') tenantApiKey?: string,
+    @Headers('x-tenant-id') tenantHeaderSlug?: string,
+    @Body() body?: { limit?: number },
+  ) {
+    const slug = await this.crmService.resolveTenantSlug(tenantApiKey, tenantHeaderSlug);
+    const followUps = await this.followUpService.evaluateDueFollowUps(
+      slug,
+      typeof body?.limit === 'number' ? body.limit : 10,
+    );
+    return {
+      ok: true,
+      tenantSlug: slug,
+      followUps,
+    };
   }
 }

@@ -199,11 +199,12 @@ Devuelve SIEMPRE un objeto JSON válido con la siguiente estructura exacta:
 REGLAS MCP Y DE COMPORTAMIENTO:
 - Usa máximo 2 emojis por mensaje (ej. 👋, 🚀, 💻, 💡) y lenguaje técnico ligero y natural.
 - Nunca te presentes como un bot o IA a menos que el cliente lo pregunte directamente.
+- REGLA CRÍTICA DE VERACIDAD (CERO ALUCINACIONES): Usa ÚNICAMENTE fechas de inicio, duraciones, horarios, precios, promociones, enlaces y condiciones que aparezcan literalmente en tu catálogo o reglas autorizadas. Está TERMINANTEMENTE PROHIBIDO inventar o suponer precios, descuentos, fechas de inicio alternativas, horas de duración, horarios, instructores, cupos, módulos de temario, cuentas bancarias, links de pago o inclusión de vouchers. Si un dato solicitado no está validado en tu base de conocimiento, indícalo con transparencia y deriva a un asesor humano.
 - Si el cliente pregunta precios de Academia Krakedev o Cursos/Certificaciones AWS, incluye "cotizar_descuento_grupo" en "mcp_tool_calls".
 - Para Software a la Medida está PROHIBIDO dar precios cerrados; indaga en su necesidad para reunión con especialista.
 - REGLA DE ORO DE TRASPASO A HUMANO:
   - Si el cliente muestra molestia/inconformidad, pregunta por el avance o proceso de su proyecto de desarrollo en curso, o busca soporte/aclarar dudas post-venta, incluye "transferir_a_humano" en "mcp_tool_calls" y pon "motivo_escalamiento": "SUPPORT_OR_FRICTION".
-  - Si el cliente pide explícitamente hablar con un asesor comercial o agendar una cita/reunión, incluye "transferir_a_humano" en "mcp_tool_calls", pon "motivo_escalamiento": "SALES_REQUEST", y pon en "respuesta_chat": "¡Perfecto! Te comunico en este mismo momento con uno de nuestros asesores especializados para que coordinen los detalles. Dame un segundo por favor 🤝".
+  - Si el cliente pide explícitamente hablar con un asesor comercial, agendar una cita/reunión, cerrar inscripción, datos de transferencia/pago no disponibles o descuentos excepcionales, incluye "transferir_a_humano" en "mcp_tool_calls", pon "motivo_escalamiento": "SALES_REQUEST", y pon en "respuesta_chat": "¡Perfecto! Te comunico en este mismo momento con uno de nuestros asesores especializados para que coordinen los detalles. Dame un segundo por favor 🤝".
 - Si el cliente cambia de producto en la conversación, actualiza "linea_detectada" al nuevo producto y llena "extraccion" con los campos de ese nuevo producto.
 `;
 
@@ -243,7 +244,7 @@ REGLAS MCP Y DE COMPORTAMIENTO:
           },
           contents,
           generationConfig: {
-            temperature: 0.35,
+            temperature: 0.15,
             responseMimeType: 'application/json',
           },
         }),
@@ -286,7 +287,7 @@ REGLAS MCP Y DE COMPORTAMIENTO:
       body: JSON.stringify({
         model: cleanModel,
         response_format: { type: 'json_object' },
-        temperature: 0.35,
+        temperature: 0.15,
         messages: [
           { role: 'system', content: fullSystemPrompt },
           ...input.recentHistory.map((m) => ({
@@ -532,7 +533,7 @@ Devuelve ÚNICAMENTE un JSON válido:
       body: JSON.stringify({
         model: cleanModel,
         response_format: { type: 'json_object' },
-        temperature: 0.35,
+        temperature: 0.15,
         messages: [
           { role: 'system', content: fullSystem },
           ...input.recentHistory.map((m) => ({ role: m.role, content: m.content })),
@@ -593,6 +594,78 @@ Devuelve ÚNICAMENTE un JSON válido:
         mode: 'ROLEPLAY',
         learnedRule: null,
       };
+    }
+  }
+
+  async generateContextualFollowUp(input: {
+    stage: 1 | 2 | 3;
+    baseTemplate: string;
+    productName?: string | null;
+    extractedDataJson?: string | null;
+    suggestedAction?: string | null;
+    recentMessages: Array<{ senderType: string; content: string }>;
+  }): Promise<string> {
+    try {
+      const apiKey = this.resolveApiKey('gemini');
+      const historyText = input.recentMessages
+        .slice(-6)
+        .map((m) => `${m.senderType === 'CUSTOMER' ? 'Cliente' : 'Fidel'}: ${m.content}`)
+        .join('\n');
+
+      const prompt = [
+        'Eres Fidel, asesor comercial cercano, gentil y amable de Clear Minds / KrakeDev en WhatsApp.',
+        `Debes redactar un mensaje de seguimiento por inactividad (Etapa ${input.stage} de 3).`,
+        `Plantilla base obligatoria de referencia (conserva su tono gentil/divertido, propósito y estilo):\n"${input.baseTemplate}"`,
+        input.productName ? `Producto/programa conversado: ${input.productName}` : '',
+        input.extractedDataJson && input.extractedDataJson !== '{}' && input.extractedDataJson !== '[]'
+          ? `Datos capturados del cliente: ${input.extractedDataJson}`
+          : '',
+        input.suggestedAction ? `Siguiente acción sugerida: ${input.suggestedAction}` : '',
+        historyText ? `Últimos mensajes de la conversación:\n${historyText}` : '',
+        'REGLAS ESTRICTAS:',
+        '1. Adapta suavemente la plantilla base al tema que estaban conversando (por ejemplo mencionando brevemente el programa o duda pendiente), SIN salirte del contexto.',
+        '2. NO inventes precios, fechas, descuentos ni cambies de producto.',
+        '3. Mantén 1 o 2 frases cortas, naturales para WhatsApp, sin sonar insistente ni robótico.',
+        '4. Devuelve ÚNICAMENTE el texto final del mensaje listo para enviar.',
+      ]
+        .filter(Boolean)
+        .join('\n\n');
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${encodeURIComponent(apiKey)}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            maxOutputTokens: 160,
+            temperature: 0.4,
+          },
+        }),
+        signal: AbortSignal.timeout(8000),
+      });
+
+      if (!res.ok) {
+        return input.baseTemplate;
+      }
+
+      const data = (await res.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      };
+      const generated = data.candidates?.[0]?.content?.parts?.[0]?.text
+        ?.replace(/^["']|["']$/g, '')
+        .trim();
+
+      if (!generated || generated.length < 15 || generated.length > 450) {
+        return input.baseTemplate;
+      }
+
+      return generated;
+    } catch (err) {
+      this.logger.warn(
+        `Fallback a plantilla literal de seguimiento (etapa ${input.stage}): ${(err as Error).message}`,
+      );
+      return input.baseTemplate;
     }
   }
 }

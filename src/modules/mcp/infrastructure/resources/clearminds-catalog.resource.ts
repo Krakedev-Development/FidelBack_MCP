@@ -46,22 +46,34 @@ export const CLEARMINDS_MCP_RESOURCES: McpResourceDefinition[] = [
     uri: 'brochure://aws-certifications',
     name: 'Línea C: Cursos y Certificaciones AWS',
     description:
-      'Preparación oficial para certificaciones AWS (AI Practitioner, Cloud Practitioner, Solutions Architect) con voucher oficial incluido.',
+      'Preparación oficial AWS Certified Solutions Architect – Associate (8 semanas, clases 100% en vivo, $235 regular / $165 Black Friday hasta 30 nov; voucher de examen NO incluido).',
     mimeType: 'text/markdown',
     productKey: 'aws_certifications',
     requiredFields: [
       'Nombre del interesado',
-      'Certificación AWS de interés (AI Practitioner, Cloud Practitioner, Solutions Architect)',
+      'Certificación AWS de interés (AWS Solutions Architect – Associate)',
+      'Horario preferido (matutino o nocturno)',
     ],
-    content: `# LÍNEA C: CURSOS Y CERTIFICACIONES AWS
-- **Opciones de certificación**: AI Practitioner, Cloud Practitioner, Solutions Architect.
-- **Datos a recopilar**: Nombre del interesado y a qué certificación de AWS le interesa postular.
-- **Política de Precios**:
-  - **Combo 3 certificaciones**: $320 USD.
-  - **Combo 2 certificaciones**: $280 USD.
-  - **Certificación individual**: $195 USD c/u.
-- **Manejo de Objeciones Frecuentes**:
-  - *¿El precio incluye el voucher?*: Sí, aclara con entusiasmo que los valores indicados ya incluyen el acompañamiento de preparación y el voucher oficial para el examen.`,
+    content: `# LÍNEA C: PREPARACIÓN AWS CERTIFIED SOLUTIONS ARCHITECT – ASSOCIATE
+- **Nombre oficial**: Preparación AWS Certified Solutions Architect – Associate.
+- **Duración y modalidad**: 8 semanas · Clases 100 % en vivo.
+- **Inicio previsto**: 11 de enero de 2027 (fecha prevista sujeta a confirmación interna; NO inventar otras fechas de inicio).
+- **Horarios confirmados**:
+  - **Matutino**: Lunes, miércoles y viernes | 07h00–08h20.
+  - **Nocturno**: Martes y jueves | 19h30–21h30.
+- **Precios confirmados**:
+  - **Precio regular**: $235 USD.
+  - **Precio promocional Black Friday**: $165 USD (ahorro de $70, aprox. 30 % de descuento), **vigente únicamente hasta el 30 de noviembre**.
+- **Qué incluye**: Clases en vivo, acceso a grabaciones, simuladores, soporte y seguimiento durante el programa.
+- **Voucher de examen oficial**: **NO incluido** (se adquiere por separado). El programa prepara para el examen oficial de AWS; aprobar el examen con AWS otorga la certificación, no comprar el curso.
+- **Formas de pago**: Transferencia bancaria, tarjeta de crédito y link de pago (NO inventar números de cuenta ni enlaces de pago; si desea inscribirse o pide datos de pago, conectar con un asesor humano).
+- **Temario oficial**: Si preguntan por temario, contenidos, temas, módulos, plan de estudios o syllabus, comparte inmediatamente este enlace íntegro sin inventar módulos ni contenidos:
+  https://drive.google.com/file/d/1godC01fw8ztyh0550ZgwwAyYgSKYnRp6/view?usp=sharing
+- **Restricciones obligatorias (AWS)**:
+  - Respuestas breves (preferentemente 2 a 4 oraciones por mensaje), claras y una pregunta a la vez.
+  - PROHIBIDO inventar precios, vigencias, cupos, fechas de inicio, horarios, instructores, temario, testimonios, beneficios, cuentas bancarias o enlaces de pago.
+  - PROHIBIDO afirmar que el voucher está incluido o garantizar aprobación del examen o empleo.
+  - Derivar a asesor humano ante solicitudes de inscripción, datos de transferencia/pago no disponibles, facturación, reclamos, descuentos excepcionales o información no validada.`,
   },
   {
     uri: 'brochure://ai-assistants-b2b',
@@ -86,7 +98,7 @@ export const CLEARMINDS_MCP_TOOLS: McpToolDefinition[] = [
   {
     name: 'cotizar_descuento_grupo',
     description:
-      'Calcula precios exactos para Cursos/Certificaciones AWS (individual $195, combo 2 $280, combo 3 $320) o Academia Krakedev (matrícula $40 + primer módulo $280). Para Software a la Medida o Asistentes de IA indica sesión de levantamiento sin precios cerrados.',
+      'Devuelve precios y condiciones oficiales para AWS Solutions Architect – Associate ($235 USD regular / $165 USD Black Friday vigente hasta el 30 de noviembre; voucher oficial NO incluido) o Academia Krakedev (matrícula $40 + primer módulo $280). Para Software a la Medida o Asistentes de IA indica sesión de levantamiento sin precios cerrados.',
     inputSchema: {
       type: 'object',
       properties: {

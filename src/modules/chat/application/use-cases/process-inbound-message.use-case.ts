@@ -138,7 +138,10 @@ export class ProcessInboundMessageUseCase {
     try {
       await this.prisma.conversation.updateMany({
         where: { sessionId },
-        data: { controlState: status },
+        data: {
+          controlState: status,
+          ...(status === 'HUMAN_ACTIVE' ? { nextFollowUpAt: null } : {}),
+        },
       });
     } catch {
       // Fallback in-memory
@@ -246,7 +249,7 @@ export class ProcessInboundMessageUseCase {
 
     const systemPrompt =
       params.customSystemPrompt?.trim() ||
-      `Eres ${tenantConfig.tenant.agentName}, ${tenantConfig.tenant.agentRole} de la empresa "${tenantConfig.tenant.name}" (tenant: ${resolvedTenantSlug}).\nTONO: ${tenantConfig.tenant.tone}\nPOLÍTICA Y REGLAS DE LA EMPRESA:\n${tenantConfig.tenant.globalRules}\n\nCATÁLOGO / CONOCIMIENTO:\n${allBrochuresContext}${activeRulesBlock}`;
+      `Eres ${tenantConfig.tenant.agentName}, ${tenantConfig.tenant.agentRole} de la empresa "${tenantConfig.tenant.name}" (tenant: ${resolvedTenantSlug}).\nTONO: ${tenantConfig.tenant.tone}\nPOLÍTICA Y REGLAS DE LA EMPRESA:\n${tenantConfig.tenant.globalRules}\n\nREGLA OBLIGATORIA DE FIDELIDAD DE DATOS:\n- Obedece estrictamente los datos confirmados en CATÁLOGO / CONOCIMIENTO y REGLAS APRENDIDAS.\n- NUNCA inventes fechas de inicio, duraciones, horarios, precios, descuentos, cuentas bancarias, links de pago ni inclusión de vouchers.\n\nCATÁLOGO / CONOCIMIENTO:\n${allBrochuresContext}${activeRulesBlock}`;
 
     const recentHistory = session.history
       .slice(-8, -1)
@@ -459,17 +462,29 @@ export class ProcessInboundMessageUseCase {
         where: { id: data.productKey },
       });
 
+      const now = new Date();
+      const firstFollowUpAt =
+        data.controlState === 'AI_ACTIVE' ? new Date(now.getTime() + 15 * 60_000) : null;
+
       const conversation = await this.prisma.conversation.upsert({
         where: { sessionId: data.sessionId },
         update: {
           productLineId: validProductLine ? data.productKey : null,
           controlState: data.controlState,
+          followUpStage: 0,
+          lastCustomerMessageAt: now,
+          lastAiReplyAt: now,
+          nextFollowUpAt: firstFollowUpAt,
         },
         create: {
           sessionId: data.sessionId,
           tenantId: data.tenantId,
           productLineId: validProductLine ? data.productKey : null,
           controlState: data.controlState,
+          followUpStage: 0,
+          lastCustomerMessageAt: now,
+          lastAiReplyAt: now,
+          nextFollowUpAt: firstFollowUpAt,
         },
       });
 

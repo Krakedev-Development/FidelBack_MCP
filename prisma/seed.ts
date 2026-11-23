@@ -30,7 +30,8 @@ export const IMMUTABLE_GENERAL_POLICY = `MANUAL DE ENTRENAMIENTO DEL ASISTENTE "
 Cuando un cliente salude, identifica en qué está interesado y aplica el flujo de calificación específico:
 - Línea A (Software a la Medida): Recopilar Nombre, Empresa, Giro de negocio y Necesidad específica. PROHIBIDO dar precios cerrados; requiere levantamiento de requerimientos con especialista.
 - Línea B (Academia Krakedev): Recopilar Nombre, Edad y Conocimientos previos. Precios promocionales: Matrícula $40 USD + Primer módulo $280 USD. Aclarar que es formación práctica orientada al empleo real (no título universitario) y 100% online interactiva.
-- Línea C (Cursos y Certificaciones AWS): Recopilar Nombre y Certificación de interés (AI Practitioner, Cloud Practitioner, Solutions Architect). Precios: Combo 3 ($320 USD), Combo 2 ($280 USD), Individual ($195 USD c/u). Aclarar que incluye acompañamiento de preparación y voucher oficial del examen.
+- Línea C (Preparación AWS Certified Solutions Architect – Associate): Duración 8 semanas, clases 100 % en vivo, inicio previsto 11 de enero de 2027. Horario matutino: L/Mi/V 07h00–08h20; nocturno: Ma/Ju 19h30–21h30. Precio regular: $235 USD; Black Friday: $165 USD (vigente hasta el 30 de noviembre). Incluye clases en vivo, grabaciones, simuladores, soporte y seguimiento. Voucher oficial NO incluido. Temario: https://drive.google.com/file/d/1godC01fw8ztyh0550ZgwwAyYgSKYnRp6/view?usp=sharing.
+- Regla estricta de veracidad: NUNCA inventar fechas, precios, vigencias, horarios, cupos, instructores, cuentas bancarias, links de pago, temarios o inclusión de voucher.
 - Línea D (Asistentes de IA para Negocios): Recopilar Nombre, Qué necesita automatizar y Giro de negocio. Indicar que se están liberando accesos anticipados y soluciones piloto a la medida, requiriendo sesión técnica breve.
 
 3. REGLAS DE ORO PARA TRASPASO A HUMANO (ESCALAMIENTO INMEDIATO):
@@ -84,20 +85,24 @@ export const DEFAULT_PRODUCT_LINES = [
   {
     id: 'aws_certifications',
     name: 'Línea C: Cursos y Certificaciones AWS',
-    tagline: 'AI Practitioner, Cloud Practitioner y Solutions Architect con voucher incluido',
-    badge: 'AWS Oficial · Incluye Voucher',
+    tagline: 'Preparación AWS Solutions Architect – Associate (8 semanas en vivo · Voucher NO incluido)',
+    badge: 'AWS · $235 / $165 Black Friday',
     ragStoreId: 'brochure://aws-certifications',
-    systemInstructions: `LÍNEA C — CURSOS Y CERTIFICACIONES AWS:
-- Opciones: AI Practitioner, Cloud Practitioner, Solutions Architect.
-- Datos a recopilar: Nombre del interesado, Certificación de AWS a la que le interesa postular.
-- Política de Precios: Combo 3 certificaciones: $320 USD | Combo 2 certificaciones: $280 USD | Certificación individual: $195 USD c/u.
-- Objeción frecuente (¿incluye el voucher?): Sí, aclara con entusiasmo que los valores indicados ya incluyen acompañamiento de preparación y el voucher oficial para el examen.`,
+    systemInstructions: `LÍNEA C — PREPARACIÓN AWS CERTIFIED SOLUTIONS ARCHITECT – ASSOCIATE:
+- Duración y modalidad: 8 semanas, clases 100 % en vivo. Inicio previsto: 11 de enero de 2027 (sujeto a confirmación interna; no inventar otras fechas).
+- Horarios: Matutino (lunes, miércoles y viernes | 07h00–08h20) y Nocturno (martes y jueves | 19h30–21h30).
+- Precios: Regular $235 USD | Promoción Black Friday $165 USD (ahorro $70, vigente hasta el 30 de noviembre).
+- Incluye: Clases en vivo, grabaciones, simuladores, soporte y seguimiento. Formas de pago: Transferencia, tarjeta de crédito y link de pago.
+- Voucher oficial de examen: NO incluido (se adquiere por separado). El programa prepara para el examen oficial de AWS.
+- Temario oficial: Si preguntan por temario/syllabus/contenidos, compartir inmediatamente: https://drive.google.com/file/d/1godC01fw8ztyh0550ZgwwAyYgSKYnRp6/view?usp=sharing sin inventar módulos.
+- Restricciones: Respuestas breves (2 a 4 oraciones), una pregunta a la vez. No inventar precios, fechas, cupos, cuentas bancarias ni enlaces de pago. Derivar a asesor humano para inscripciones, pagos o consultas no validadas.`,
     keyFields: [
       'Nombre del interesado',
       'Certificación AWS de interés',
+      'Horario preferido (matutino o nocturno)',
     ],
     suggestedPrompts: [
-      'Me interesan las certificaciones de AWS. ¿Cuánto cuesta el combo de 2 y si incluye el voucher?',
+      'Me interesa AWS Solutions Architect – Associate. ¿Cuál es el precio, horarios y el temario?',
     ],
   },
   {
