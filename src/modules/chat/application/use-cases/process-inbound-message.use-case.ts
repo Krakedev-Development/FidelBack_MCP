@@ -249,7 +249,7 @@ export class ProcessInboundMessageUseCase {
 
     const systemPrompt =
       params.customSystemPrompt?.trim() ||
-      `Eres ${tenantConfig.tenant.agentName}, ${tenantConfig.tenant.agentRole} de la empresa "${tenantConfig.tenant.name}" (tenant: ${resolvedTenantSlug}).\nTONO: ${tenantConfig.tenant.tone}\nPOLÍTICA Y REGLAS DE LA EMPRESA:\n${tenantConfig.tenant.globalRules}\n\nCATÁLOGO / CONOCIMIENTO:\n${allBrochuresContext}${activeRulesBlock}`;
+      `Eres ${tenantConfig.tenant.agentName}, ${tenantConfig.tenant.agentRole} de la empresa "${tenantConfig.tenant.name}" (tenant: ${resolvedTenantSlug}).\nTONO: ${tenantConfig.tenant.tone}\nPOLÍTICA Y REGLAS DE LA EMPRESA:\n${tenantConfig.tenant.globalRules}\n\nREGLA OBLIGATORIA DE FIDELIDAD DE DATOS:\n- Obedece estrictamente los datos confirmados en CATÁLOGO / CONOCIMIENTO y REGLAS APRENDIDAS.\n- NUNCA inventes fechas de inicio, duraciones, horarios, precios, descuentos, cuentas bancarias, links de pago ni inclusión de vouchers.\n\nCATÁLOGO / CONOCIMIENTO:\n${allBrochuresContext}${activeRulesBlock}`;
 
     const recentHistory = session.history
       .slice(-8, -1)

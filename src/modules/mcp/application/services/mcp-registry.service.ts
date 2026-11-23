@@ -143,16 +143,8 @@ export class McpRegistryService {
             this.recordExecution(result);
             return result;
           } else if (productKey === 'aws_certifications') {
-            let totalInvestment = 195;
-            let planLabel = 'Certificación individual AWS ($195 USD c/u)';
-
-            if (count >= 3) {
-              totalInvestment = 320;
-              planLabel = 'Combo 3 certificaciones AWS ($320 USD)';
-            } else if (count === 2) {
-              totalInvestment = 280;
-              planLabel = 'Combo 2 certificaciones AWS ($280 USD)';
-            }
+            const regularPriceUsd = 235;
+            const blackFridayPriceUsd = 165;
 
             const result: McpToolExecutionResult = {
               toolName,
@@ -160,13 +152,25 @@ export class McpRegistryService {
               timestamp,
               data: {
                 productKey,
-                certificationsCount: count,
+                programName: 'Preparación AWS Certified Solutions Architect – Associate',
+                participants: count,
                 paymentMode,
-                totalInvestmentUsd: totalInvestment,
-                planLabel,
-                includesVoucher: true,
+                regularPriceUsd,
+                blackFridayPriceUsd,
+                promoValidUntil: '30 de noviembre',
+                duration: '8 semanas',
+                modality: 'Clases 100 % en vivo',
+                plannedStartDate: '11 de enero de 2027',
+                schedules: {
+                  morning: 'Lunes, miércoles y viernes | 07h00–08h20',
+                  evening: 'Martes y jueves | 19h30–21h30',
+                },
+                includesVoucher: false,
+                paymentMethods: ['Transferencia bancaria', 'Tarjeta de crédito', 'Link de pago'],
+                syllabusUrl:
+                  'https://drive.google.com/file/d/1godC01fw8ztyh0550ZgwwAyYgSKYnRp6/view?usp=sharing',
               },
-              message: `${planLabel} — Total: $${totalInvestment} USD. Incluye acompañamiento de preparación y voucher oficial del examen.`,
+              message: `Preparación AWS Certified Solutions Architect – Associate: Precio regular $${regularPriceUsd} USD; promoción Black Friday $${blackFridayPriceUsd} USD (ahorro de $70, vigente hasta el 30 de noviembre). Duración: 8 semanas, clases 100 % en vivo, inicio previsto 11 de enero de 2027. Voucher del examen oficial NO incluido.`,
             };
             this.recordExecution(result);
             return result;
