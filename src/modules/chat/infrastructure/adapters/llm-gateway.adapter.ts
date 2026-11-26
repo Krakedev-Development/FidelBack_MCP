@@ -1,11 +1,11 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { EnvironmentVariables } from '../../../../context/config/app.config';
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { EnvironmentVariables } from "../../../../context/config/app.config";
 import {
   LlmTurnInput,
   LlmTurnOutput,
   ProductLineKey,
-} from '../../domain/interfaces/llm-gateway.port';
+} from "../../domain/interfaces/llm-gateway.port";
 
 @Injectable()
 export class LlmGatewayAdapter {
@@ -30,30 +30,32 @@ export class LlmGatewayAdapter {
     }
 
     try {
-      const apiKey = this.resolveApiKey('gemini', overrideKey);
+      const apiKey = this.resolveApiKey("gemini", overrideKey);
       const imgRes = await fetch(cleanUrl, {
         signal: AbortSignal.timeout(7000),
       });
       if (!imgRes.ok) {
-        this.logger.warn(`No se pudo descargar imagen de anuncio (${imgRes.status}): ${cleanUrl}`);
+        this.logger.warn(
+          `No se pudo descargar imagen de anuncio (${imgRes.status}): ${cleanUrl}`,
+        );
         return null;
       }
 
       const arrayBuffer = await imgRes.arrayBuffer();
-      const base64 = Buffer.from(arrayBuffer).toString('base64');
-      const mimeType = imgRes.headers.get('content-type') || 'image/jpeg';
+      const base64 = Buffer.from(arrayBuffer).toString("base64");
+      const mimeType = imgRes.headers.get("content-type") || "image/jpeg";
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${encodeURIComponent(apiKey)}`;
       const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [
             {
-              role: 'user',
+              role: "user",
               parts: [
                 {
-                  text: 'Analiza esta imagen de un anuncio publicitario y describe en 1 o 2 oraciones claras qué curso, certificación o servicio específico promociona (transcribe los textos clave visibles en la imagen, como AWS, certificaciones AI/Cloud/Solutions Architect, Krakedev, Software a la Medida, etc.). Sé directo.',
+                  text: "Analiza esta imagen de un anuncio publicitario y describe en 1 o 2 oraciones claras qué curso, certificación o servicio específico promociona (transcribe los textos clave visibles en la imagen, como AWS, certificaciones AI/Cloud/Solutions Architect, Krakedev, Software a la Medida, etc.). Sé directo.",
                 },
                 {
                   inlineData: {
@@ -73,100 +75,118 @@ export class LlmGatewayAdapter {
 
       if (!res.ok) {
         const errBody = await res.text();
-        this.logger.warn(`Gemini Vision anuncio HTTP ${res.status}: ${errBody.slice(0, 150)}`);
+        this.logger.warn(
+          `Gemini Vision anuncio HTTP ${res.status}: ${errBody.slice(0, 150)}`,
+        );
         return null;
       }
 
       const data = (await res.json()) as {
         candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
       };
-      const summary = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
+      const summary =
+        data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || null;
       if (summary) {
         this.adVisionCache.set(key, summary);
         this.logger.log(`🖼️ Anuncio visual cacheado [${key}]: ${summary}`);
       }
       return summary;
     } catch (err) {
-      this.logger.warn(`Error analizando imagen del anuncio: ${(err as Error).message}`);
+      this.logger.warn(
+        `Error analizando imagen del anuncio: ${(err as Error).message}`,
+      );
       return null;
     }
   }
 
-  resolveApiKey(provider: 'gemini' | 'openai', overrideKey?: string): string {
+  resolveApiKey(provider: "gemini" | "openai", overrideKey?: string): string {
     const trimmed = overrideKey?.trim();
     if (trimmed) return trimmed;
 
-    if (provider === 'gemini') {
-      const envKey = this.configService.get('GEMINI_API_KEY', { infer: true });
+    if (provider === "gemini") {
+      const envKey = this.configService.get("GEMINI_API_KEY", { infer: true });
       if (envKey) return envKey.trim();
       throw new BadRequestException(
-        'No se proporcionó GEMINI_API_KEY en la petición ni en el archivo .env del servidor.',
+        "No se proporcionó GEMINI_API_KEY en la petición ni en el archivo .env del servidor.",
       );
     }
 
-    const envKey = this.configService.get('OPENAI_API_KEY', { infer: true });
+    const envKey = this.configService.get("OPENAI_API_KEY", { infer: true });
     if (envKey) return envKey.trim();
     throw new BadRequestException(
-      'No se proporcionó OPENAI_API_KEY en la petición ni en el archivo .env del servidor.',
+      "No se proporcionó OPENAI_API_KEY en la petición ni en el archivo .env del servidor.",
     );
   }
 
   async testConnection(
-    provider: 'gemini' | 'openai',
+    provider: "gemini" | "openai",
     model: string,
     overrideKey?: string,
-  ): Promise<{ ok: boolean; provider: string; model: string; latencyMs: number; message: string }> {
+  ): Promise<{
+    ok: boolean;
+    provider: string;
+    model: string;
+    latencyMs: number;
+    message: string;
+  }> {
     const start = Date.now();
     const apiKey = this.resolveApiKey(provider, overrideKey);
 
-    if (provider === 'gemini') {
-      const cleanModel = (model || 'gemini-flash-lite-latest').replace(/^models\//, '');
+    if (provider === "gemini") {
+      const cleanModel = (model || "gemini-flash-lite-latest").replace(
+        /^models\//,
+        "",
+      );
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${encodeURIComponent(apiKey)}`;
       const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: 'Responde solo OK' }] }],
+          contents: [{ role: "user", parts: [{ text: "Responde solo OK" }] }],
           generationConfig: { maxOutputTokens: 10 },
         }),
       });
 
       if (!res.ok) {
         const errBody = await res.text();
-        throw new BadRequestException(`Gemini HTTP ${res.status}: ${errBody.slice(0, 200)}`);
+        throw new BadRequestException(
+          `Gemini HTTP ${res.status}: ${errBody.slice(0, 200)}`,
+        );
       }
 
       return {
         ok: true,
-        provider: 'gemini',
+        provider: "gemini",
         model: cleanModel,
         latencyMs: Date.now() - start,
         message: `Conexión exitosa con Google Gemini (${cleanModel}) desde FidelBack_MCP.`,
       };
     }
 
-    const cleanModel = model || 'gpt-4o-mini';
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
+    const cleanModel = model || "gpt-4o-mini";
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: cleanModel,
-        messages: [{ role: 'user', content: 'Responde solo OK' }],
+        messages: [{ role: "user", content: "Responde solo OK" }],
         max_tokens: 10,
       }),
     });
 
     if (!res.ok) {
       const errBody = await res.text();
-      throw new BadRequestException(`OpenAI HTTP ${res.status}: ${errBody.slice(0, 200)}`);
+      throw new BadRequestException(
+        `OpenAI HTTP ${res.status}: ${errBody.slice(0, 200)}`,
+      );
     }
 
     return {
       ok: true,
-      provider: 'openai',
+      provider: "openai",
       model: cleanModel,
       latencyMs: Date.now() - start,
       message: `Conexión exitosa con OpenAI (${cleanModel}) desde FidelBack_MCP.`,
@@ -212,32 +232,35 @@ REGLAS MCP Y DE COMPORTAMIENTO:
       ? `\nORIGEN PUBLICITARIO DEL LEAD (META ADS — TEXTO + IMAGEN DEL ANUNCIO):\n${input.adSummary}\nINSTRUCCIÓN CRÍTICA DE ANUNCIO:
 - El cliente llegó por este anuncio. Identifica inmediatamente la línea anunciada (ej. si menciona AWS -> "aws_certifications", Krakedev -> "krakedev_academy", Software -> "custom_software", IA -> "ai_assistants_b2b").
 - Si el anuncio (texto o imagen) YA especifica un programa o certificación concreta (por ejemplo: "AWS Solutions Architect – Associate", "AI Practitioner", "Cloud Practitioner"), regístrala automáticamente como "captured" en "extraccion" y PROHIBIDO volver a preguntarle al cliente cuál certificación quiere. Asume directamente ese programa, dale la bienvenida sobre él (reconociendo cualquier promoción del anuncio como Black Friday si aparece) y pídele únicamente los datos que aún falten (ej. su nombre completo).\n`
-      : '';
+      : "";
 
     const activeLineBlock = input.activeProductKey
-      ? `LÍNEA ACTIVA ACTUAL: ${input.activeProductKey}\nCAMPOS DE EXTRACCIÓN DE LÍNEA ACTIVA: ${input.requiredFields.join(', ')}`
+      ? `LÍNEA ACTIVA ACTUAL: ${input.activeProductKey}\nCAMPOS DE EXTRACCIÓN DE LÍNEA ACTIVA: ${input.requiredFields.join(", ")}`
       : `LÍNEA ACTIVA ACTUAL: Ninguna preseleccionada (Detecta la línea según el anuncio o el mensaje del cliente; si el cliente solo saluda y NO hay anuncio ni mención de producto, pregúntale amablemente en cuál de nuestras soluciones está interesado en vez de asumir "custom_software").`;
 
-    const fullSystemPrompt = `${input.systemPrompt}\n\nMEMORIA INCREMENTAL PREVIA:\n${input.incrementalSummary || 'Sin resumen previo.'}\n${adBlock}\n${activeLineBlock}\n${jsonInstruction}`;
+    const fullSystemPrompt = `${input.systemPrompt}\n\nMEMORIA INCREMENTAL PREVIA:\n${input.incrementalSummary || "Sin resumen previo."}\n${adBlock}\n${activeLineBlock}\n${jsonInstruction}`;
 
-    if (input.provider === 'gemini') {
-      const cleanModel = (input.model || 'gemini-flash-lite-latest').replace(/^models\//, '');
+    if (input.provider === "gemini") {
+      const cleanModel = (input.model || "gemini-flash-lite-latest").replace(
+        /^models\//,
+        "",
+      );
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
       const contents = [
         ...input.recentHistory.map((m) => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
+          role: m.role === "assistant" ? "model" : "user",
           parts: [{ text: m.content }],
         })),
         {
-          role: 'user',
+          role: "user",
           parts: [{ text: input.userMessage }],
         },
       ];
 
       const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systemInstruction: {
             parts: [{ text: fullSystemPrompt }],
@@ -245,7 +268,7 @@ REGLAS MCP Y DE COMPORTAMIENTO:
           contents,
           generationConfig: {
             temperature: 0.15,
-            responseMimeType: 'application/json',
+            responseMimeType: "application/json",
           },
         }),
       });
@@ -253,18 +276,23 @@ REGLAS MCP Y DE COMPORTAMIENTO:
       if (!res.ok) {
         const errText = await res.text();
         this.logger.error(`Error Gemini: ${errText}`);
-        throw new BadRequestException(`Error en Gemini (${res.status}): ${errText.slice(0, 250)}`);
+        throw new BadRequestException(
+          `Error en Gemini (${res.status}): ${errText.slice(0, 250)}`,
+        );
       }
 
       const data = (await res.json()) as {
         candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-        usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number };
+        usageMetadata?: {
+          promptTokenCount?: number;
+          candidatesTokenCount?: number;
+        };
       };
 
-      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
       const parsed = this.safeParseJson(
         rawText,
-        input.activeProductKey || 'custom_software',
+        input.activeProductKey || "custom_software",
         input.requiredFields,
       );
 
@@ -277,24 +305,24 @@ REGLAS MCP Y DE COMPORTAMIENTO:
     }
 
     // OpenAI execution
-    const cleanModel = input.model || 'gpt-4o-mini';
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
+    const cleanModel = input.model || "gpt-4o-mini";
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: cleanModel,
-        response_format: { type: 'json_object' },
+        response_format: { type: "json_object" },
         temperature: 0.15,
         messages: [
-          { role: 'system', content: fullSystemPrompt },
+          { role: "system", content: fullSystemPrompt },
           ...input.recentHistory.map((m) => ({
             role: m.role,
             content: m.content,
           })),
-          { role: 'user', content: input.userMessage },
+          { role: "user", content: input.userMessage },
         ],
       }),
     });
@@ -302,7 +330,9 @@ REGLAS MCP Y DE COMPORTAMIENTO:
     if (!res.ok) {
       const errText = await res.text();
       this.logger.error(`Error OpenAI: ${errText}`);
-      throw new BadRequestException(`Error en OpenAI (${res.status}): ${errText.slice(0, 250)}`);
+      throw new BadRequestException(
+        `Error en OpenAI (${res.status}): ${errText.slice(0, 250)}`,
+      );
     }
 
     const data = (await res.json()) as {
@@ -310,10 +340,10 @@ REGLAS MCP Y DE COMPORTAMIENTO:
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
 
-    const rawText = data.choices?.[0]?.message?.content || '{}';
+    const rawText = data.choices?.[0]?.message?.content || "{}";
     const parsed = this.safeParseJson(
       rawText,
-      input.activeProductKey || 'custom_software',
+      input.activeProductKey || "custom_software",
       input.requiredFields,
     );
 
@@ -326,36 +356,46 @@ REGLAS MCP Y DE COMPORTAMIENTO:
   }
 
   async generateSummary(
-    provider: 'gemini' | 'openai',
+    provider: "gemini" | "openai",
     model: string,
     apiKey: string | undefined,
     previousSummary: string,
     messagesToSummarize: Array<{ role: string; content: string }>,
   ): Promise<string> {
     const resolvedKey = this.resolveApiKey(provider, apiKey);
-    const prompt = `Actualiza el siguiente resumen ejecutivo comercial en máximo 4 viñetas concisas conservando nombre del cliente, empresa/institución, línea de interés, presupuesto/grupo y objeciones.\n\nRESUMEN ANTERIOR:\n${previousSummary || 'Ninguno'}\n\nNUEVOS MENSAJES:\n${messagesToSummarize.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n')}`;
+    const prompt = `Actualiza el siguiente resumen ejecutivo comercial en máximo 4 viñetas concisas conservando nombre del cliente, empresa/institución, línea de interés, presupuesto/grupo y objeciones.\n\nRESUMEN ANTERIOR:\n${previousSummary || "Ninguno"}\n\nNUEVOS MENSAJES:\n${messagesToSummarize.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n")}`;
 
     try {
-      if (provider === 'gemini') {
-        const cleanModel = (model || 'gemini-flash-lite-latest').replace(/^models\//, '');
+      if (provider === "gemini") {
+        const cleanModel = (model || "gemini-flash-lite-latest").replace(
+          /^models\//,
+          "",
+        );
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${encodeURIComponent(resolvedKey)}`;
         const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
             generationConfig: { maxOutputTokens: 250, temperature: 0.2 },
           }),
         });
         if (res.ok) {
           const data = (await res.json()) as {
-            candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+            candidates?: Array<{
+              content?: { parts?: Array<{ text?: string }> };
+            }>;
           };
-          return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || previousSummary;
+          return (
+            data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
+            previousSummary
+          );
         }
       }
     } catch (err) {
-      this.logger.warn(`No se pudo comprimir resumen incremental: ${(err as Error).message}`);
+      this.logger.warn(
+        `No se pudo comprimir resumen incremental: ${(err as Error).message}`,
+      );
     }
     return previousSummary;
   }
@@ -364,87 +404,103 @@ REGLAS MCP Y DE COMPORTAMIENTO:
     rawText: string,
     fallbackProduct: ProductLineKey,
     requiredFields: string[],
-  ): Omit<LlmTurnOutput, 'inputTokens' | 'outputTokens' | 'latencyMs'> {
+  ): Omit<LlmTurnOutput, "inputTokens" | "outputTokens" | "latencyMs"> {
     try {
       const cleaned = rawText
-        .replace(/^```json\s*/i, '')
-        .replace(/```\s*$/i, '')
+        .replace(/^```json\s*/i, "")
+        .replace(/```\s*$/i, "")
         .trim();
       const parsed = JSON.parse(cleaned) as Record<string, unknown>;
 
       const validProducts: ProductLineKey[] = [
-        'custom_software',
-        'krakedev_academy',
-        'aws_certifications',
-        'ai_assistants_b2b',
+        "custom_software",
+        "krakedev_academy",
+        "aws_certifications",
+        "ai_assistants_b2b",
       ];
-      const detected = validProducts.includes(parsed.linea_detectada as ProductLineKey)
+      const detected = validProducts.includes(
+        parsed.linea_detectada as ProductLineKey,
+      )
         ? (parsed.linea_detectada as ProductLineKey)
         : fallbackProduct;
 
-      const rawExtraction = Array.isArray(parsed.extraccion) ? parsed.extraccion : [];
+      const rawExtraction = Array.isArray(parsed.extraccion)
+        ? parsed.extraccion
+        : [];
       const extractedFields =
         rawExtraction.length > 0
           ? rawExtraction.map((item: Record<string, unknown>) => ({
-              key: String(item.key || 'Dato'),
-              value: String(item.value || 'Pendiente'),
-              status: (['captured', 'partial', 'missing'].includes(String(item.status))
+              key: String(item.key || "Dato"),
+              value: String(item.value || "Pendiente"),
+              status: (["captured", "partial", "missing"].includes(
+                String(item.status),
+              )
                 ? String(item.status)
-                : 'missing') as 'captured' | 'partial' | 'missing',
+                : "missing") as "captured" | "partial" | "missing",
             }))
           : requiredFields.map((key) => ({
               key,
-              value: 'Pendiente',
-              status: 'missing' as const,
+              value: "Pendiente",
+              status: "missing" as const,
             }));
 
-      const rawTools = Array.isArray(parsed.mcp_tool_calls) ? parsed.mcp_tool_calls : [];
-      const rawHandoffCat = String(parsed.motivo_escalamiento || '').trim();
-      const handoffCategory: 'SUPPORT_OR_FRICTION' | 'SALES_REQUEST' | null =
-        rawHandoffCat === 'SUPPORT_OR_FRICTION' || rawHandoffCat === 'SALES_REQUEST'
+      const rawTools = Array.isArray(parsed.mcp_tool_calls)
+        ? parsed.mcp_tool_calls
+        : [];
+      const rawHandoffCat = String(parsed.motivo_escalamiento || "").trim();
+      const handoffCategory: "SUPPORT_OR_FRICTION" | "SALES_REQUEST" | null =
+        rawHandoffCat === "SUPPORT_OR_FRICTION" ||
+        rawHandoffCat === "SALES_REQUEST"
           ? rawHandoffCat
           : null;
 
       return {
         replyText: String(
           parsed.respuesta_chat ||
-            'Hola, soy Fidel de Clear Minds. ¿En qué programa o solución tecnológica te puedo asesorar hoy?',
+            "Hola, soy Fidel de Clear Minds. ¿En qué programa o solución tecnológica te puedo asesorar hoy?",
         ),
         detectedProductKey: detected,
-        intentLevel: (['ALTO', 'MEDIO', 'BAJO'].includes(String(parsed.intencion))
+        intentLevel: (["ALTO", "MEDIO", "BAJO"].includes(
+          String(parsed.intencion),
+        )
           ? String(parsed.intencion)
-          : 'MEDIO') as 'ALTO' | 'MEDIO' | 'BAJO',
+          : "MEDIO") as "ALTO" | "MEDIO" | "BAJO",
         intentJustification: String(
-          parsed.justificacion_intencion || 'Evaluación comercial en curso.',
+          parsed.justificacion_intencion || "Evaluación comercial en curso.",
         ),
         extractedFields,
         nextAction: String(
-          parsed.siguiente_accion || 'Continuar calificación consultiva del prospecto.',
+          parsed.siguiente_accion ||
+            "Continuar calificación consultiva del prospecto.",
         ),
         handoffCategory,
         mcpToolCalls: rawTools
-          .filter((t: Record<string, unknown>) => typeof t?.toolName === 'string')
+          .filter(
+            (t: Record<string, unknown>) => typeof t?.toolName === "string",
+          )
           .map((t: Record<string, unknown>) => ({
             toolName: t.toolName as
-              | 'cotizar_descuento_grupo'
-              | 'agendar_cita'
-              | 'registrar_lead_crm'
-              | 'transferir_a_humano',
+              | "cotizar_descuento_grupo"
+              | "agendar_cita"
+              | "registrar_lead_crm"
+              | "transferir_a_humano",
             arguments: (t.arguments as Record<string, unknown>) ?? {},
           })),
       };
     } catch {
       return {
-        replyText: rawText || 'Recibido. ¿Me comentas más detalles para asesorarte mejor?',
+        replyText:
+          rawText ||
+          "Recibido. ¿Me comentas más detalles para asesorarte mejor?",
         detectedProductKey: fallbackProduct,
-        intentLevel: 'MEDIO',
-        intentJustification: 'Respuesta en texto libre.',
+        intentLevel: "MEDIO",
+        intentJustification: "Respuesta en texto libre.",
         extractedFields: requiredFields.map((key) => ({
           key,
-          value: 'Pendiente',
-          status: 'missing' as const,
+          value: "Pendiente",
+          status: "missing" as const,
         })),
-        nextAction: 'Indagar requerimiento principal.',
+        nextAction: "Indagar requerimiento principal.",
         handoffCategory: null,
         mcpToolCalls: [],
       };
@@ -452,15 +508,15 @@ REGLAS MCP Y DE COMPORTAMIENTO:
   }
 
   async generateTrainingTurn(input: {
-    provider: 'gemini' | 'openai';
+    provider: "gemini" | "openai";
     model: string;
     apiKey?: string;
     systemPrompt: string;
-    recentHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
+    recentHistory: Array<{ role: "user" | "assistant"; content: string }>;
     userMessage: string;
   }): Promise<{
     reply: string;
-    mode: 'SETUP' | 'ROLEPLAY' | 'CORRECTION';
+    mode: "SETUP" | "ROLEPLAY" | "CORRECTION";
     learnedRule: { instruction: string; category: string } | null;
   }> {
     const resolvedKey = this.resolveApiKey(input.provider, input.apiKey);
@@ -490,108 +546,125 @@ Devuelve ÚNICAMENTE un JSON válido:
 
     const fullSystem = `${input.systemPrompt}\n\n${trainingInstructions}`;
 
-    if (input.provider === 'gemini') {
-      const cleanModel = (input.model || 'gemini-flash-lite-latest').replace(/^models\//, '');
+    if (input.provider === "gemini") {
+      const cleanModel = (input.model || "gemini-flash-lite-latest").replace(
+        /^models\//,
+        "",
+      );
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${cleanModel}:generateContent?key=${encodeURIComponent(resolvedKey)}`;
       const contents = [
         ...input.recentHistory.map((m) => ({
-          role: m.role === 'assistant' ? 'model' : 'user',
+          role: m.role === "assistant" ? "model" : "user",
           parts: [{ text: m.content }],
         })),
-        { role: 'user', parts: [{ text: input.userMessage }] },
+        { role: "user", parts: [{ text: input.userMessage }] },
       ];
 
       const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: fullSystem }] },
           contents,
-          generationConfig: { temperature: 0.35, responseMimeType: 'application/json' },
+          generationConfig: {
+            temperature: 0.35,
+            responseMimeType: "application/json",
+          },
         }),
       });
 
       if (!res.ok) {
         const errText = await res.text();
-        throw new BadRequestException(`Error en Gemini Training (${res.status}): ${errText.slice(0, 200)}`);
+        throw new BadRequestException(
+          `Error en Gemini Training (${res.status}): ${errText.slice(0, 200)}`,
+        );
       }
 
       const data = (await res.json()) as {
         candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
       };
-      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
       return this.parseTrainingJson(raw);
     }
 
-    const cleanModel = input.model || 'gpt-4o-mini';
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
+    const cleanModel = input.model || "gpt-4o-mini";
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         Authorization: `Bearer ${resolvedKey}`,
       },
       body: JSON.stringify({
         model: cleanModel,
-        response_format: { type: 'json_object' },
+        response_format: { type: "json_object" },
         temperature: 0.15,
         messages: [
-          { role: 'system', content: fullSystem },
-          ...input.recentHistory.map((m) => ({ role: m.role, content: m.content })),
-          { role: 'user', content: input.userMessage },
+          { role: "system", content: fullSystem },
+          ...input.recentHistory.map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
+          { role: "user", content: input.userMessage },
         ],
       }),
     });
 
     if (!res.ok) {
       const errText = await res.text();
-      throw new BadRequestException(`Error en OpenAI Training (${res.status}): ${errText.slice(0, 200)}`);
+      throw new BadRequestException(
+        `Error en OpenAI Training (${res.status}): ${errText.slice(0, 200)}`,
+      );
     }
 
     const data = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
     };
-    const raw = data.choices?.[0]?.message?.content || '{}';
+    const raw = data.choices?.[0]?.message?.content || "{}";
     return this.parseTrainingJson(raw);
   }
 
   private parseTrainingJson(rawText: string): {
     reply: string;
-    mode: 'SETUP' | 'ROLEPLAY' | 'CORRECTION';
+    mode: "SETUP" | "ROLEPLAY" | "CORRECTION";
     learnedRule: { instruction: string; category: string } | null;
   } {
     try {
       const cleaned = rawText
-        .replace(/^```json\s*/i, '')
-        .replace(/```\s*$/i, '')
+        .replace(/^```json\s*/i, "")
+        .replace(/```\s*$/i, "")
         .trim();
       const parsed = JSON.parse(cleaned) as Record<string, unknown>;
-      const mode = (['SETUP', 'ROLEPLAY', 'CORRECTION'].includes(String(parsed.mode))
-        ? String(parsed.mode)
-        : 'ROLEPLAY') as 'SETUP' | 'ROLEPLAY' | 'CORRECTION';
+      const mode = (
+        ["SETUP", "ROLEPLAY", "CORRECTION"].includes(String(parsed.mode))
+          ? String(parsed.mode)
+          : "ROLEPLAY"
+      ) as "SETUP" | "ROLEPLAY" | "CORRECTION";
 
       let learnedRule: { instruction: string; category: string } | null = null;
       if (
-        mode === 'CORRECTION' &&
+        mode === "CORRECTION" &&
         parsed.learnedRule &&
-        typeof parsed.learnedRule === 'object' &&
+        typeof parsed.learnedRule === "object" &&
         (parsed.learnedRule as Record<string, unknown>).instruction
       ) {
         const lr = parsed.learnedRule as Record<string, unknown>;
         learnedRule = {
           instruction: String(lr.instruction),
-          category: String(lr.category || 'GENERAL').toUpperCase(),
+          category: String(lr.category || "GENERAL").toUpperCase(),
         };
       }
 
       return {
-        reply: String(parsed.reply || 'Modo Entrenamiento activo. Continúa por favor.'),
+        reply: String(
+          parsed.reply || "Modo Entrenamiento activo. Continúa por favor.",
+        ),
         mode,
         learnedRule,
       };
     } catch {
       return {
-        reply: rawText || 'Modo Entrenamiento activo. ¿Cómo deseas continuar?',
-        mode: 'ROLEPLAY',
+        reply: rawText || "Modo Entrenamiento activo. ¿Cómo deseas continuar?",
+        mode: "ROLEPLAY",
         learnedRule: null,
       };
     }
@@ -606,37 +679,48 @@ Devuelve ÚNICAMENTE un JSON válido:
     recentMessages: Array<{ senderType: string; content: string }>;
   }): Promise<string> {
     try {
-      const apiKey = this.resolveApiKey('gemini');
+      const apiKey = this.resolveApiKey("gemini");
       const historyText = input.recentMessages
         .slice(-6)
-        .map((m) => `${m.senderType === 'CUSTOMER' ? 'Cliente' : 'Fidel'}: ${m.content}`)
-        .join('\n');
+        .map(
+          (m) =>
+            `${m.senderType === "CUSTOMER" ? "Cliente" : "Fidel"}: ${m.content}`,
+        )
+        .join("\n");
 
       const prompt = [
-        'Eres Fidel, asesor comercial cercano, gentil y amable de Clear Minds / KrakeDev en WhatsApp.',
+        "Eres Fidel, asesor comercial cercano, gentil y amable de Clear Minds / KrakeDev en WhatsApp.",
         `Debes redactar un mensaje de seguimiento por inactividad (Etapa ${input.stage} de 3).`,
         `Plantilla base obligatoria de referencia (conserva su tono gentil/divertido, propósito y estilo):\n"${input.baseTemplate}"`,
-        input.productName ? `Producto/programa conversado: ${input.productName}` : '',
-        input.extractedDataJson && input.extractedDataJson !== '{}' && input.extractedDataJson !== '[]'
+        input.productName
+          ? `Producto/programa conversado: ${input.productName}`
+          : "",
+        input.extractedDataJson &&
+        input.extractedDataJson !== "{}" &&
+        input.extractedDataJson !== "[]"
           ? `Datos capturados del cliente: ${input.extractedDataJson}`
-          : '',
-        input.suggestedAction ? `Siguiente acción sugerida: ${input.suggestedAction}` : '',
-        historyText ? `Últimos mensajes de la conversación:\n${historyText}` : '',
-        'REGLAS ESTRICTAS:',
-        '1. Adapta suavemente la plantilla base al tema que estaban conversando (por ejemplo mencionando brevemente el programa o duda pendiente), SIN salirte del contexto.',
-        '2. NO inventes precios, fechas, descuentos ni cambies de producto.',
-        '3. Mantén 1 o 2 frases cortas, naturales para WhatsApp, sin sonar insistente ni robótico.',
-        '4. Devuelve ÚNICAMENTE el texto final del mensaje listo para enviar.',
+          : "",
+        input.suggestedAction
+          ? `Siguiente acción sugerida: ${input.suggestedAction}`
+          : "",
+        historyText
+          ? `Últimos mensajes de la conversación:\n${historyText}`
+          : "",
+        "REGLAS ESTRICTAS:",
+        "1. Adapta suavemente la plantilla base al tema que estaban conversando (por ejemplo mencionando brevemente el programa o duda pendiente), SIN salirte del contexto.",
+        "2. NO inventes precios, fechas, descuentos ni cambies de producto.",
+        "3. Mantén 1 o 2 frases cortas, naturales para WhatsApp, sin sonar insistente ni robótico.",
+        "4. Devuelve ÚNICAMENTE el texto final del mensaje listo para enviar.",
       ]
         .filter(Boolean)
-        .join('\n\n');
+        .join("\n\n");
 
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${encodeURIComponent(apiKey)}`;
       const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: {
             maxOutputTokens: 160,
             temperature: 0.4,
@@ -653,7 +737,7 @@ Devuelve ÚNICAMENTE un JSON válido:
         candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
       };
       const generated = data.candidates?.[0]?.content?.parts?.[0]?.text
-        ?.replace(/^["']|["']$/g, '')
+        ?.replace(/^["']|["']$/g, "")
         .trim();
 
       if (!generated || generated.length < 15 || generated.length > 450) {

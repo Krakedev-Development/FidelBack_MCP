@@ -1,10 +1,10 @@
-import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+import { createParamDecorator, ExecutionContext } from "@nestjs/common";
 
 export interface AuthPayload {
   sub: string;
   email: string;
   role: string;
-  typ: 'access' | 'refresh';
+  typ: "access" | "refresh";
 }
 
 export const CurrentUser = createParamDecorator(

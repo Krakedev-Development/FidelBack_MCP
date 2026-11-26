@@ -1,6 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../../../context/database/prisma.service';
-import { LlmGatewayAdapter } from '../../infrastructure/adapters/llm-gateway.adapter';
+import { Injectable, Logger } from "@nestjs/common";
+import { PrismaService } from "../../../../context/database/prisma.service";
+import { LlmGatewayAdapter } from "../../infrastructure/adapters/llm-gateway.adapter";
 
 export interface DispatchedFollowUp {
   sessionId: string;
@@ -9,9 +9,9 @@ export interface DispatchedFollowUp {
 }
 
 const FOLLOW_UP_TEMPLATES: Record<1 | 2 | 3, string> = {
-  1: '¡Hola! ☕ ¿Te quedó sonando alguna dudita o te pillé ocupado? Aquí sigo atento por si quieres que profundicemos en algo.',
-  2: '¡Hola de nuevo! 😄 No te preocupes si el trabajo te consumió. Cuando tengas un respiro, avísame y retomamos justo donde lo dejamos.',
-  3: '¡Hola! 👋 Sé que los días pasan volando. ¿Pudiste pensar en la opción que revisamos o prefieres que agendemos una llamada rápida esta semana para ayudarte a decidir?',
+  1: "¡Hola! ☕ ¿Te quedó sonando alguna dudita o te pillé ocupado? Aquí sigo atento por si quieres que profundicemos en algo.",
+  2: "¡Hola de nuevo! 😄 No te preocupes si el trabajo te consumió. Cuando tengas un respiro, avísame y retomamos justo donde lo dejamos.",
+  3: "¡Hola! 👋 Sé que los días pasan volando. ¿Pudiste pensar en la opción que revisamos o prefieres que agendemos una llamada rápida esta semana para ayudarte a decidir?",
 };
 
 export const FOLLOW_UP_DELAYS_MS = {
@@ -63,22 +63,22 @@ export class FollowUpService {
     const candidates = await this.prisma.conversation.findMany({
       where: {
         tenantId: tenant.id,
-        controlState: 'AI_ACTIVE',
+        controlState: "AI_ACTIVE",
         followUpStage: { lt: 3 },
         nextFollowUpAt: { not: null, lte: now },
         lastCustomerMessageAt: { gt: windowCutoff },
-        appointments: { none: { status: 'CONFIRMED' } },
+        appointments: { none: { status: "CONFIRMED" } },
       },
       include: {
         productLine: { select: { name: true } },
         lead: { select: { extractedDataJson: true, suggestedAction: true } },
         messages: {
-          orderBy: { createdAt: 'desc' },
+          orderBy: { createdAt: "desc" },
           take: 6,
           select: { senderType: true, content: true },
         },
       },
-      orderBy: { nextFollowUpAt: 'asc' },
+      orderBy: { nextFollowUpAt: "asc" },
       take: safeLimit,
     });
 
@@ -86,8 +86,8 @@ export class FollowUpService {
 
     for (const conv of candidates) {
       const latestMsg = conv.messages[0];
-      if (!latestMsg || latestMsg.senderType !== 'AI') {
-        if (latestMsg?.senderType === 'HUMAN') {
+      if (!latestMsg || latestMsg.senderType !== "AI") {
+        if (latestMsg?.senderType === "HUMAN") {
           await this.prisma.conversation.update({
             where: { id: conv.id },
             data: { nextFollowUpAt: null },
@@ -102,7 +102,7 @@ export class FollowUpService {
       const claimed = await this.prisma.conversation.updateMany({
         where: {
           id: conv.id,
-          controlState: 'AI_ACTIVE',
+          controlState: "AI_ACTIVE",
           followUpStage: conv.followUpStage,
           nextFollowUpAt: { not: null, lte: now },
         },
@@ -130,7 +130,7 @@ export class FollowUpService {
       await this.prisma.message.create({
         data: {
           conversationId: conv.id,
-          senderType: 'AI',
+          senderType: "AI",
           content: messageText,
         },
       });

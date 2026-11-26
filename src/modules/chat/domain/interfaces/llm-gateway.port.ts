@@ -1,21 +1,21 @@
 export type ProductLineKey =
-  | 'custom_software'
-  | 'krakedev_academy'
-  | 'aws_certifications'
-  | 'ai_assistants_b2b';
+  | "custom_software"
+  | "krakedev_academy"
+  | "aws_certifications"
+  | "ai_assistants_b2b";
 
 export interface StructuredExtractionItem {
   key: string;
   value: string;
-  status: 'captured' | 'partial' | 'missing';
+  status: "captured" | "partial" | "missing";
 }
 
 export interface RequestedMcpToolCall {
   toolName:
-    | 'cotizar_descuento_grupo'
-    | 'agendar_cita'
-    | 'registrar_lead_crm'
-    | 'transferir_a_humano';
+    | "cotizar_descuento_grupo"
+    | "agendar_cita"
+    | "registrar_lead_crm"
+    | "transferir_a_humano";
   arguments: Record<string, unknown>;
 }
 
@@ -29,7 +29,7 @@ export interface AdContextInput {
 }
 
 export interface LlmTurnInput {
-  provider: 'gemini' | 'openai';
+  provider: "gemini" | "openai";
   model: string;
   apiKey?: string;
   systemPrompt: string;
@@ -37,18 +37,18 @@ export interface LlmTurnInput {
   requiredFields: string[];
   incrementalSummary: string;
   adSummary?: string;
-  recentHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
+  recentHistory: Array<{ role: "user" | "assistant"; content: string }>;
   userMessage: string;
 }
 
 export interface LlmTurnOutput {
   replyText: string;
   detectedProductKey: ProductLineKey;
-  intentLevel: 'ALTO' | 'MEDIO' | 'BAJO';
+  intentLevel: "ALTO" | "MEDIO" | "BAJO";
   intentJustification: string;
   extractedFields: StructuredExtractionItem[];
   nextAction: string;
-  handoffCategory?: 'SUPPORT_OR_FRICTION' | 'SALES_REQUEST' | null;
+  handoffCategory?: "SUPPORT_OR_FRICTION" | "SALES_REQUEST" | null;
   mcpToolCalls: RequestedMcpToolCall[];
   inputTokens: number;
   outputTokens: number;

@@ -1,10 +1,16 @@
-import { plainToInstance } from 'class-transformer';
-import { IsEnum, IsNumber, IsOptional, IsString, validateSync } from 'class-validator';
+import { plainToInstance } from "class-transformer";
+import {
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  validateSync,
+} from "class-validator";
 
 export enum Environment {
-  Development = 'development',
-  Production = 'production',
-  Test = 'test',
+  Development = "development",
+  Production = "production",
+  Test = "test",
 }
 
 export class EnvironmentVariables {
@@ -24,23 +30,23 @@ export class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
-  JWT_EXPIRES_IN: string = '8h';
+  JWT_EXPIRES_IN: string = "8h";
 
   @IsString()
   @IsOptional()
-  JWT_REFRESH_EXPIRES_IN: string = '7d';
+  JWT_REFRESH_EXPIRES_IN: string = "7d";
 
   @IsString()
   @IsOptional()
-  FRONTEND_URL: string = 'http://localhost:3000';
+  FRONTEND_URL: string = "http://localhost:3000";
 
   @IsString()
   @IsOptional()
-  COOKIE_SAMESITE: string = 'lax';
+  COOKIE_SAMESITE: string = "lax";
 
   @IsString()
   @IsOptional()
-  COOKIE_PATH: string = '/';
+  COOKIE_PATH: string = "/";
 
   @IsString()
   @IsOptional()

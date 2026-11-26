@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
-import { CrmController } from './api/controllers/crm.controller';
-import { CrmService } from './application/services/crm.service';
+import { Module } from "@nestjs/common";
+import { CrmController } from "./api/controllers/crm.controller";
+import { CrmService } from "./application/services/crm.service";
 
 @Module({
   controllers: [CrmController],
