@@ -20,6 +20,7 @@ export interface InMemorySessionState {
   status: 'AI_ACTIVE' | 'HUMAN_ACTIVE' | 'CLOSED';
   activeProductKey: ProductLineKey | null;
   adSummary?: string;
+  broadcastContext?: string;
   incrementalSummary: string;
   messagesCount: number;
   extractedFields: StructuredExtractionItem[];
@@ -171,6 +172,7 @@ export class ProcessInboundMessageUseCase {
     trainingMode?: boolean;
     trainerName?: string;
     adContext?: AdContextInput;
+    broadcastContext?: string;
   }) {
     // 0. Resolver empresa (Tenant) por x-tenant-key o tenantSlug
     const resolvedTenantSlug = await this.crmService.resolveTenantSlug(
@@ -193,6 +195,10 @@ export class ProcessInboundMessageUseCase {
       if (summary) {
         session.adSummary = summary;
       }
+    }
+
+    if (params.broadcastContext?.trim()) {
+      session.broadcastContext = params.broadcastContext.trim();
     }
 
     const incomingRole = params.senderRole || 'user';
@@ -317,6 +323,7 @@ export class ProcessInboundMessageUseCase {
       requiredFields: activeResource ? activeResource.requiredFields : [],
       incrementalSummary: session.incrementalSummary,
       adSummary: session.adSummary,
+      broadcastContext: params.broadcastContext?.trim() || session.broadcastContext,
       recentHistory,
       userMessage: params.message,
     });

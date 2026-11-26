@@ -75,6 +75,11 @@ export class SendMessageDto {
   @IsObject()
   @IsOptional()
   adContext?: AdContextInput;
+
+  @ApiPropertyOptional({ description: 'Contexto del envío masivo o plantilla enviada previamente al cliente' })
+  @IsString()
+  @IsOptional()
+  broadcastContext?: string;
 }
 
 export class TestLlmConnectionDto {

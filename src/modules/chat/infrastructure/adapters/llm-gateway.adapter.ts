@@ -214,11 +214,15 @@ REGLAS MCP Y DE COMPORTAMIENTO:
 - Si el anuncio (texto o imagen) YA especifica un programa o certificación concreta (por ejemplo: "AWS Solutions Architect – Associate", "AI Practitioner", "Cloud Practitioner"), regístrala automáticamente como "captured" en "extraccion" y PROHIBIDO volver a preguntarle al cliente cuál certificación quiere. Asume directamente ese programa, dale la bienvenida sobre él (reconociendo cualquier promoción del anuncio como Black Friday si aparece) y pídele únicamente los datos que aún falten (ej. su nombre completo).\n`
       : '';
 
+    const broadcastBlock = input.broadcastContext?.trim()
+      ? `\nMENSAJE MASIVO / CAMPAÑA ENVIADA PREVIAMENTE AL CLIENTE:\n${input.broadcastContext.trim()}\nINSTRUCCIÓN DE CONTEXTO MASIVO:\n- El cliente está respondiendo a este envío masivo o plantilla enviada por Clear Minds.\n- Responde directamente en contexto a la promoción, curso o invitación mencionada en el masivo (no preguntes "a qué te refieres"), y obedece estrictamente el catálogo autorizado sin inventar fechas, precios ni vouchers.\n`
+      : '';
+
     const activeLineBlock = input.activeProductKey
       ? `LÍNEA ACTIVA ACTUAL: ${input.activeProductKey}\nCAMPOS DE EXTRACCIÓN DE LÍNEA ACTIVA: ${input.requiredFields.join(', ')}`
       : `LÍNEA ACTIVA ACTUAL: Ninguna preseleccionada (Detecta la línea según el anuncio o el mensaje del cliente; si el cliente solo saluda y NO hay anuncio ni mención de producto, pregúntale amablemente en cuál de nuestras soluciones está interesado en vez de asumir "custom_software").`;
 
-    const fullSystemPrompt = `${input.systemPrompt}\n\nMEMORIA INCREMENTAL PREVIA:\n${input.incrementalSummary || 'Sin resumen previo.'}\n${adBlock}\n${activeLineBlock}\n${jsonInstruction}`;
+    const fullSystemPrompt = `${input.systemPrompt}\n\nMEMORIA INCREMENTAL PREVIA:\n${input.incrementalSummary || 'Sin resumen previo.'}\n${adBlock}${broadcastBlock}\n${activeLineBlock}\n${jsonInstruction}`;
 
     if (input.provider === 'gemini') {
       const cleanModel = (input.model || 'gemini-flash-lite-latest').replace(/^models\//, '');
