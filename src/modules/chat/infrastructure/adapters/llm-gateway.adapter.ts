@@ -581,7 +581,7 @@ REGLAS MCP Y DE COMPORTAMIENTO:
           input: [
             {
               role: 'developer',
-              content: `${fullSystemPrompt}\n\nIMPORTANTE: Tu salida completa debe ser estrictamente un objeto JSON válido conforme al formato solicitado.\nRECUERDA: Eres solo asesor comercial, NO profesor ni tutor. Si el último mensaje del usuario pide explicar un concepto técnico/académico (ej. árboles rojo y negro, algoritmos, programación, estadística, tareas) o practicar/simular un tema, devuelve OBLIGATORIAMENTE "fuera_de_alcance": true.`,
+              content: `${fullSystemPrompt}\n\nIMPORTANTE: Tu salida completa debe ser estrictamente un objeto JSON válido conforme al formato solicitado.\nRECUERDA: Aplica SIEMPRE el Manual de Comportamiento Global (25–55 palabras, máx. 3 oraciones breves, formato *~$regular~* / *$promo*, 1 pregunta simple de una sola opción y máximo 1 emoji al final) y usa ÚNICAMENTE datos literales verificados en file_search. Eres solo asesor comercial, NO profesor ni tutor: si el último mensaje pide explicar un concepto técnico/académico o practicar/simular un tema, devuelve OBLIGATORIAMENTE "fuera_de_alcance": true.`,
             },
             ...input.recentHistory.map((m) => ({
               role: m.role,
@@ -599,7 +599,7 @@ REGLAS MCP Y DE COMPORTAMIENTO:
           text: {
             format: { type: 'json_object' },
           },
-          temperature: 0.4,
+          temperature: 0.2,
         }),
         signal: AbortSignal.timeout(25_000),
       });
@@ -653,7 +653,7 @@ REGLAS MCP Y DE COMPORTAMIENTO:
         body: JSON.stringify({
           model: cleanModel,
           response_format: { type: 'json_object' },
-          temperature: 0.4,
+          temperature: 0.2,
           messages: [
             { role: 'system', content: fullSystemPrompt },
             ...input.recentHistory.map((m) => ({
