@@ -1,16 +1,10 @@
-import { plainToInstance } from "class-transformer";
-import {
-  IsEnum,
-  IsNumber,
-  IsOptional,
-  IsString,
-  validateSync,
-} from "class-validator";
+import { plainToInstance } from 'class-transformer';
+import { IsEnum, IsIn, IsNumber, IsOptional, IsString, validateSync } from 'class-validator';
 
 export enum Environment {
-  Development = "development",
-  Production = "production",
-  Test = "test",
+  Development = 'development',
+  Production = 'production',
+  Test = 'test',
 }
 
 export class EnvironmentVariables {
@@ -30,23 +24,23 @@ export class EnvironmentVariables {
 
   @IsString()
   @IsOptional()
-  JWT_EXPIRES_IN: string = "8h";
+  JWT_EXPIRES_IN: string = '8h';
 
   @IsString()
   @IsOptional()
-  JWT_REFRESH_EXPIRES_IN: string = "7d";
+  JWT_REFRESH_EXPIRES_IN: string = '7d';
 
   @IsString()
   @IsOptional()
-  FRONTEND_URL: string = "http://localhost:3000";
+  FRONTEND_URL: string = 'http://localhost:3000';
 
   @IsString()
   @IsOptional()
-  COOKIE_SAMESITE: string = "lax";
+  COOKIE_SAMESITE: string = 'lax';
 
   @IsString()
   @IsOptional()
-  COOKIE_PATH: string = "/";
+  COOKIE_PATH: string = '/';
 
   @IsString()
   @IsOptional()
@@ -55,6 +49,22 @@ export class EnvironmentVariables {
   @IsString()
   @IsOptional()
   OPENAI_API_KEY?: string;
+
+  @IsIn(['openai', 'gemini'])
+  @IsOptional()
+  LLM_DEFAULT_PROVIDER: 'openai' | 'gemini' = 'openai';
+
+  @IsString()
+  @IsOptional()
+  OPENAI_DEFAULT_MODEL: string = 'gpt-4.1-mini';
+
+  @IsString()
+  @IsOptional()
+  GEMINI_DEFAULT_MODEL: string = 'gemini-flash-lite-latest';
+
+  @IsString()
+  @IsOptional()
+  OPENAI_VECTOR_STORE_ID?: string;
 }
 
 export function validateConfig(config: Record<string, unknown>) {

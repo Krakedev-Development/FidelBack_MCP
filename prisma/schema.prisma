@@ -19,18 +19,41 @@ model User {
 }
 
 model Tenant {
-  id              String         @id @default(uuid())
-  slug            String         @unique
-  name            String
-  apiKey          String?        @unique
-  generalPolicy   String         @db.Text
-  memoryThreshold Int            @default(5)
-  isActive        Boolean        @default(true)
-  productLines    ProductLine[]
-  conversations   Conversation[]
-  trainingRules   TrainingRule[]
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  id                  String              @id @default(uuid())
+  slug                String              @unique
+  name                String
+  apiKey              String?             @unique
+  generalPolicy       String              @db.Text
+  memoryThreshold     Int                 @default(5)
+  isActive            Boolean             @default(true)
+  openaiVectorStoreId String?
+  productLines        ProductLine[]
+  conversations       Conversation[]
+  trainingRules       TrainingRule[]
+  knowledgeDocuments  KnowledgeDocument[]
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+}
+
+model KnowledgeDocument {
+  id            String   @id @default(uuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  openaiFileId  String   @unique
+  vectorStoreId String
+  filename      String
+  mimeType      String   @default("application/pdf")
+  sizeBytes     Int      @default(0)
+  category      String   @default("GENERAL") // MANUAL, PRODUCT, CAMPAIGN, PROMOTION, GENERAL
+  productLineId String?
+  notes         String?  @db.Text
+  status        String   @default("PROCESSING") // PROCESSING, READY, FAILED
+  isActive      Boolean  @default(true)
+  uploadedBy    String   @default("Admin")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId, isActive])
 }
 
 model TrainingRule {
