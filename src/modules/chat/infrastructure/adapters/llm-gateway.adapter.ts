@@ -362,11 +362,12 @@ REGLAS MCP Y DE COMPORTAMIENTO:
   - Marca también "fuera_de_alcance": true para temas personales, cultura general o personas/docentes que NO aparecen en los documentos del RAG.
   - Marca "fuera_de_alcance": false ÚNICAMENTE para saludos, agradecimientos, avisos cortos ("era un mensaje equivocado") o preguntas comerciales e informativas válidas sobre nuestros programas (precios, promos, duración, horarios, modalidad, campus, temario oficial, inscripción, requisitos o soporte comercial).
 - ESTILO WHATSAPP HUMANO Y BREVE (OBLIGATORIO):
-  - Responde en máximo 2 a 3 oraciones cortas (idealmente 25 a 55 palabras en total; prohibido escribir bloques densos).
-  - Separa ideas, precios/horarios y la pregunta final en párrafos cortos con una línea en blanco (\n\n reales, nunca escribas los caracteres literales \n).
-  - Habla natural, cercano y directo como un asesor comercial real por WhatsApp; usa como máximo 1 emoji por mensaje, exclusivamente al final después del último signo de puntuación (nunca al inicio ni en medio).
-  - CERO REPETICIÓN DE CONTEXTO: Si en el historial reciente ya están hablando de un curso o servicio (ej. AWS AI Practitioner o KrakeDev), NO repitas el nombre completo del programa ni datos ya entregados (precio regular, duración, etc.); responde directo a lo nuevo que preguntó el cliente.
-  - UNA SOLA PREGUNTA SIMPLE AL FINAL: Termina con máximo una pregunta corta y concreta (prohibido hacer preguntas dobles como "¿Quieres X o prefieres Y?").
+  - RESPUESTA QUIRÚRGICA (1 DUDA = SOLO ESE DATO): Responde ÚNICAMENTE lo que preguntó el cliente en su último mensaje. Si pregunta "¿cuándo inician?", responde SOLO la fecha de inicio (1 oración) y una pregunta corta; PROHIBIDO añadir horarios, duración, modalidad, precios o beneficios que NO preguntó.
+  - TOPE ESTRICTO DE LONGITUD: Máximo 2 párrafos muy cortos (objetivo 15 a 35 palabras en total; nunca superes 45 palabras salvo que el cliente pida varios datos a la vez).
+  - PROHIBIDO COPIAR PLANTILLAS DEL RAG NI REPETIR DATOS: Los ejemplos en los PDFs son solo referencia de datos. NUNCA copies bloques enteros ni repitas precios, duración, modalidad, fechas u horarios que ya aparezcan en tus mensajes previos del historial.
+  - FORMATO Y EMOJI: Separa la respuesta y la pregunta final con una línea en blanco (\n\n reales, nunca escribas \n literal). Usa máximo 1 emoji, únicamente al final después del último signo de puntuación (nunca al inicio ni en medio).
+  - UNA SOLA PREGUNTA DE UNA SOLA OPCIÓN: Cierra con una pregunta corta sobre algo que aún NO hayas dado. PROHIBIDO usar "o" para ofrecer dos opciones (nunca digas "¿horarios o precios?", "¿más info o inscribirte?", "¿horarios o cómo inscribirte?").
+  - Habla natural, cercano y directo como un asesor comercial real por WhatsApp.
 - Nunca te presentes como un bot o IA a menos que el cliente lo pregunte directamente.
 - REGLA CRÍTICA DE VERACIDAD (CERO ALUCINACIONES): Usa ÚNICAMENTE fechas de inicio, duraciones, horarios, precios, promociones, enlaces y condiciones que aparezcan literalmente en los documentos recuperados por file_search (RAG), en tu catálogo autorizado o en reglas aprendidas. Está TERMINANTEMENTE PROHIBIDO inventar o suponer precios, promociones inexistentes, descuentos no vigentes, fechas de inicio alternativas, horas de duración, horarios, instructores, cupos, módulos de temario, cuentas bancarias, links de pago o inclusión de vouchers. Si el cliente pregunta por una promoción, descuento o dato que NO consta vigente en los documentos autorizados, aclara con honestidad que no tienes confirmada esa promoción o dato y ofrece conectarlo con un asesor humano.
 - ${input.useRagFirst ? 'MODO RAG-FIRST Y PROMOCIONES (OBLIGATORIO): Consulta file_search recuperando TANTO el manual general del producto COMO el Manual de Promociones Vigentes de esa línea (ej. AWS o KrakeDev) antes de cotizar o afirmar que no hay descuento vigente. Nunca niegues una promoción mencionada en el anuncio o en el turno previo sin verificar primero el Manual de Promociones Vigentes para la fecha actual. No asumas precios de memoria; cita los de los documentos.' : 'Si el cliente pregunta precios de Academia Krakedev o Cursos/Certificaciones AWS, incluye "cotizar_descuento_grupo" en "mcp_tool_calls".'}
@@ -587,7 +588,7 @@ REGLAS MCP Y DE COMPORTAMIENTO:
             {
               type: 'file_search',
               vector_store_ids: [input.vectorStoreId],
-              max_num_results: 12,
+              max_num_results: 8,
             },
           ],
           text: {
@@ -932,7 +933,7 @@ Devuelve ÚNICAMENTE un JSON válido:
               {
                 type: 'file_search',
                 vector_store_ids: [input.vectorStoreId],
-                max_num_results: 12,
+                max_num_results: 8,
               },
             ],
             text: { format: { type: 'json_object' } },
