@@ -379,7 +379,17 @@ REGLAS MCP Y DE COMPORTAMIENTO:
       ? `LÍNEA ACTIVA ACTUAL: ${input.activeProductKey}\nCAMPOS DE EXTRACCIÓN DE LÍNEA ACTIVA: ${input.requiredFields.join(', ')}`
       : `LÍNEA ACTIVA ACTUAL: Ninguna preseleccionada (Detecta la línea según el anuncio o el mensaje del cliente; si el cliente solo saluda y NO hay anuncio ni mención de producto, pregúntale amablemente en cuál de nuestras soluciones está interesado en vez de asumir "custom_software").`;
 
-    const fullSystemPrompt = `${input.systemPrompt}\n\nMEMORIA INCREMENTAL PREVIA:\n${input.incrementalSummary || 'Sin resumen previo.'}\n${adBlock}${broadcastBlock}\n${activeLineBlock}\n${jsonInstruction}`;
+    const now = new Date();
+    const currentDateIso = new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'America/Guayaquil',
+    }).format(now);
+    const currentDateHuman = new Intl.DateTimeFormat('es-EC', {
+      timeZone: 'America/Guayaquil',
+      dateStyle: 'full',
+    }).format(now);
+    const currentDateBlock = `FECHA ACTUAL (Ecuador, America/Guayaquil): ${currentDateHuman} (${currentDateIso}). Usa esta fecha exacta para validar si una promoción o fecha de inicio está vigente o vencida.`;
+
+    const fullSystemPrompt = `${input.systemPrompt}\n\n${currentDateBlock}\n\nMEMORIA INCREMENTAL PREVIA:\n${input.incrementalSummary || 'Sin resumen previo.'}\n${adBlock}${broadcastBlock}\n${activeLineBlock}\n${jsonInstruction}`;
 
     const canFailoverToGemini = !input.apiKey && this.hasProviderKey('gemini');
     const canFailoverToOpenAi = !input.apiKey && this.hasProviderKey('openai');
