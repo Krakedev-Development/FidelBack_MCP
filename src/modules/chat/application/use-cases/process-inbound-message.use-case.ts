@@ -82,6 +82,76 @@ export class ProcessInboundMessageUseCase {
     return created;
   }
 
+  private async hydrateSessionFromSupabase(
+    session: InMemorySessionState,
+  ): Promise<void> {
+    if (session.history.length > 0) {
+      return;
+    }
+
+    try {
+      const conv = await this.prisma.conversation.findUnique({
+        where: { sessionId: session.sessionId },
+        include: {
+          messages: {
+            orderBy: { createdAt: 'desc' },
+            take: 12,
+          },
+          summaries: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+        },
+      });
+
+      if (!conv) {
+        return;
+      }
+
+      session.history = conv.messages
+        .slice()
+        .reverse()
+        .map((m) => ({
+          role:
+            m.senderType === 'CUSTOMER'
+              ? 'user'
+              : m.senderType === 'HUMAN'
+                ? 'human_agent'
+                : 'assistant',
+          content: m.content,
+          createdAt: m.createdAt.toISOString(),
+        }));
+      session.messagesCount = conv.messages.length;
+
+      if (conv.summaries[0]?.content) {
+        session.incrementalSummary = conv.summaries[0].content;
+      }
+
+      const validProductKeys: ProductLineKey[] = [
+        'custom_software',
+        'krakedev_academy',
+        'aws_certifications',
+        'ai_assistants_b2b',
+      ];
+      if (
+        !session.activeProductKey &&
+        conv.productLineId &&
+        validProductKeys.includes(conv.productLineId as ProductLineKey)
+      ) {
+        session.activeProductKey = conv.productLineId as ProductLineKey;
+      }
+
+      session.status =
+        conv.controlState === 'HUMAN_ACTIVE'
+          ? 'HUMAN_ACTIVE'
+          : conv.controlState === 'CLOSED'
+            ? 'CLOSED'
+            : 'AI_ACTIVE';
+    } catch {
+      // Fallback cleanly to in-memory
+    }
+  }
+
   getSessionState(sessionId: string): InMemorySessionState {
     return this.getOrCreateMemorySession(sessionId);
   }
@@ -192,6 +262,7 @@ export class ProcessInboundMessageUseCase {
       params.activeProductKey ?? null,
       resolvedTenantSlug,
     );
+    await this.hydrateSessionFromSupabase(session);
 
     if (params.activeProductKey && params.activeProductKey !== session.activeProductKey) {
       session.activeProductKey = params.activeProductKey;
