@@ -1,21 +1,21 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { Injectable, Logger } from "@nestjs/common";
+import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
   CallToolRequestSchema,
   ListResourcesRequestSchema,
   ListToolsRequestSchema,
   ReadResourceRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
-import { PrismaService } from '../../../../context/database/prisma.service';
+} from "@modelcontextprotocol/sdk/types.js";
+import { PrismaService } from "../../../../context/database/prisma.service";
 import {
   McpResourceDefinition,
   McpToolDefinition,
   McpToolExecutionResult,
-} from '../../domain/interfaces/mcp-tool.port';
+} from "../../domain/interfaces/mcp-tool.port";
 import {
   CLEARMINDS_MCP_RESOURCES,
   CLEARMINDS_MCP_TOOLS,
-} from '../../infrastructure/resources/clearminds-catalog.resource';
+} from "../../infrastructure/resources/clearminds-catalog.resource";
 
 @Injectable()
 export class McpRegistryService {
@@ -27,8 +27,8 @@ export class McpRegistryService {
   constructor(private readonly prisma: PrismaService) {
     this.mcpServer = new Server(
       {
-        name: 'fidel-clearminds-mcp-server',
-        version: '1.3.0',
+        name: "fidel-clearminds-mcp-server",
+        version: "1.3.0",
       },
       {
         capabilities: {
@@ -55,23 +55,26 @@ export class McpRegistryService {
       })),
     }));
 
-    this.mcpServer.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-      const resource = CLEARMINDS_MCP_RESOURCES.find(
-        (r: McpResourceDefinition) => r.uri === request.params.uri,
-      );
-      if (!resource) {
-        throw new Error(`Recurso MCP no encontrado: ${request.params.uri}`);
-      }
-      return {
-        contents: [
-          {
-            uri: resource.uri,
-            mimeType: resource.mimeType,
-            text: resource.content,
-          },
-        ],
-      };
-    });
+    this.mcpServer.setRequestHandler(
+      ReadResourceRequestSchema,
+      async (request) => {
+        const resource = CLEARMINDS_MCP_RESOURCES.find(
+          (r: McpResourceDefinition) => r.uri === request.params.uri,
+        );
+        if (!resource) {
+          throw new Error(`Recurso MCP no encontrado: ${request.params.uri}`);
+        }
+        return {
+          contents: [
+            {
+              uri: resource.uri,
+              mimeType: resource.mimeType,
+              text: resource.content,
+            },
+          ],
+        };
+      },
+    );
 
     this.mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
       const result = await this.executeTool(
@@ -81,7 +84,7 @@ export class McpRegistryService {
       return {
         content: [
           {
-            type: 'text',
+            type: "text",
             text: JSON.stringify(result, null, 2),
           },
         ],
@@ -113,12 +116,12 @@ export class McpRegistryService {
 
     try {
       switch (toolName) {
-        case 'cotizar_descuento_grupo': {
-          const productKey = String(args.productKey || 'krakedev_academy');
+        case "cotizar_descuento_grupo": {
+          const productKey = String(args.productKey || "krakedev_academy");
           const count = Math.max(1, Number(args.participants || 1));
-          const paymentMode = String(args.paymentMode || 'contado');
+          const paymentMode = String(args.paymentMode || "contado");
 
-          if (productKey === 'krakedev_academy') {
+          if (productKey === "krakedev_academy") {
             const enrollmentFee = 40;
             const firstModule = 280;
             const totalPerStudent = enrollmentFee + firstModule;
@@ -136,13 +139,14 @@ export class McpRegistryService {
                 firstModuleUsd: firstModule,
                 totalPerStudentUsd: totalPerStudent,
                 totalInvestmentUsd: totalInvestment,
-                modality: '100% Online, interactiva y con acompañamiento cercano',
+                modality:
+                  "100% Online, interactiva y con acompañamiento cercano",
               },
               message: `Cotización Krakedev (Oferta promocional): Matrícula $${enrollmentFee} USD + Primer módulo $${firstModule} USD (Total por estudiante: $${totalPerStudent} USD).`,
             };
             this.recordExecution(result);
             return result;
-          } else if (productKey === 'aws_certifications') {
+          } else if (productKey === "aws_certifications") {
             const regularPriceUsd = 235;
             const blackFridayPriceUsd = 165;
 
@@ -152,23 +156,28 @@ export class McpRegistryService {
               timestamp,
               data: {
                 productKey,
-                programName: 'Preparación AWS Certified Solutions Architect – Associate',
+                programName:
+                  "Preparación AWS Certified Solutions Architect – Associate",
                 participants: count,
                 paymentMode,
                 regularPriceUsd,
                 blackFridayPriceUsd,
-                promoValidUntil: '30 de noviembre',
-                duration: '8 semanas',
-                modality: 'Clases 100 % en vivo',
-                plannedStartDate: '11 de enero de 2027',
+                promoValidUntil: "30 de noviembre",
+                duration: "8 semanas",
+                modality: "Clases 100 % en vivo",
+                plannedStartDate: "11 de enero de 2027",
                 schedules: {
-                  morning: 'Lunes, miércoles y viernes | 07h00–08h20',
-                  evening: 'Martes y jueves | 19h30–21h30',
+                  morning: "Lunes, miércoles y viernes | 07h00–08h20",
+                  evening: "Martes y jueves | 19h30–21h30",
                 },
                 includesVoucher: false,
-                paymentMethods: ['Transferencia bancaria', 'Tarjeta de crédito', 'Link de pago'],
+                paymentMethods: [
+                  "Transferencia bancaria",
+                  "Tarjeta de crédito",
+                  "Link de pago",
+                ],
                 syllabusUrl:
-                  'https://drive.google.com/file/d/1godC01fw8ztyh0550ZgwwAyYgSKYnRp6/view?usp=sharing',
+                  "https://drive.google.com/file/d/1godC01fw8ztyh0550ZgwwAyYgSKYnRp6/view?usp=sharing",
               },
               message: `Preparación AWS Certified Solutions Architect – Associate: Precio regular $${regularPriceUsd} USD; promoción Black Friday $${blackFridayPriceUsd} USD (ahorro de $70, vigente hasta el 30 de noviembre). Duración: 8 semanas, clases 100 % en vivo, inicio previsto 11 de enero de 2027. Voucher del examen oficial NO incluido.`,
             };
@@ -181,11 +190,11 @@ export class McpRegistryService {
               timestamp,
               data: {
                 productKey,
-                quotationType: 'NO_FIXED_PRICE',
+                quotationType: "NO_FIXED_PRICE",
                 recommendation:
-                  productKey === 'ai_assistants_b2b'
-                    ? 'Indagar proceso a automatizar y proponer sesión técnica breve (accesos anticipados / piloto a medida).'
-                    : 'No dar precios cerrados; levantar requerimientos específicos en reunión con especialista.',
+                  productKey === "ai_assistants_b2b"
+                    ? "Indagar proceso a automatizar y proponer sesión técnica breve (accesos anticipados / piloto a medida)."
+                    : "No dar precios cerrados; levantar requerimientos específicos en reunión con especialista.",
               },
               message: `Sin precio cerrado para ${productKey}: requiere levantamiento técnico/comercial con especialista.`,
             };
@@ -194,10 +203,10 @@ export class McpRegistryService {
           }
         }
 
-        case 'agendar_cita': {
-          const leadName = String(args.leadName || 'Prospecto Clear Minds');
-          const leadContact = String(args.leadContact || 'Por confirmar');
-          const productKey = String(args.productKey || 'custom_software');
+        case "agendar_cita": {
+          const leadName = String(args.leadName || "Prospecto Clear Minds");
+          const leadContact = String(args.leadContact || "Por confirmar");
+          const productKey = String(args.productKey || "custom_software");
           const scheduledAtRaw = String(
             args.scheduledAt || new Date(Date.now() + 86400000).toISOString(),
           );
@@ -211,11 +220,13 @@ export class McpRegistryService {
                 contactEmail: leadContact,
                 productName: productKey,
                 scheduledDate: scheduledAtRaw.slice(0, 10),
-                scheduledTime: scheduledAtRaw.slice(11, 16) || '10:00',
+                scheduledTime: scheduledAtRaw.slice(11, 16) || "10:00",
               },
             });
           } catch (dbErr) {
-            this.logger.debug(`Modo sin DB activa en agendar_cita: ${(dbErr as Error).message}`);
+            this.logger.debug(
+              `Modo sin DB activa en agendar_cita: ${(dbErr as Error).message}`,
+            );
           }
 
           const result: McpToolExecutionResult = {
@@ -236,10 +247,10 @@ export class McpRegistryService {
           return result;
         }
 
-        case 'registrar_lead_crm': {
-          const sessionId = String(args.sessionId || '');
-          const productKey = String(args.productKey || 'custom_software');
-          const intentLevel = String(args.intentLevel || 'MEDIO');
+        case "registrar_lead_crm": {
+          const sessionId = String(args.sessionId || "");
+          const productKey = String(args.productKey || "custom_software");
+          const intentLevel = String(args.intentLevel || "MEDIO");
           const extractedFields =
             (args.extractedFields as Record<string, unknown>) ?? {};
 
@@ -253,7 +264,9 @@ export class McpRegistryService {
               });
             }
           } catch (dbErr) {
-            this.logger.debug(`Modo sin DB activa en registrar_lead_crm: ${(dbErr as Error).message}`);
+            this.logger.debug(
+              `Modo sin DB activa en registrar_lead_crm: ${(dbErr as Error).message}`,
+            );
           }
 
           const result: McpToolExecutionResult = {
@@ -261,7 +274,7 @@ export class McpRegistryService {
             success: true,
             timestamp,
             data: {
-              sessionId: sessionId || 'session_local',
+              sessionId: sessionId || "session_local",
               productKey,
               intentLevel,
               extractedFields,
@@ -272,9 +285,11 @@ export class McpRegistryService {
           return result;
         }
 
-        case 'transferir_a_humano': {
-          const sessionId = String(args.sessionId || 'session_local');
-          const reason = String(args.reason || 'Solicitud de atención personalizada');
+        case "transferir_a_humano": {
+          const sessionId = String(args.sessionId || "session_local");
+          const reason = String(
+            args.reason || "Solicitud de atención personalizada",
+          );
 
           const result: McpToolExecutionResult = {
             toolName,
@@ -282,7 +297,7 @@ export class McpRegistryService {
             timestamp,
             data: {
               sessionId,
-              newStatus: 'PENDING_HANDOFF',
+              newStatus: "PENDING_HANDOFF",
               reason,
             },
             message: `Escalamiento a asesor humano solicitado para sesión ${sessionId} (Fidel activo hasta respuesta del asesor). Motivo: ${reason}`,

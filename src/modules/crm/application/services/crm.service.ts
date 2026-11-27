@@ -1,24 +1,24 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { randomBytes } from 'crypto';
-import { PrismaService } from '../../../../context/database/prisma.service';
-import { CLEARMINDS_MCP_RESOURCES } from '../../../mcp/infrastructure/resources/clearminds-catalog.resource';
-import { McpResourceDefinition } from '../../../mcp/domain/interfaces/mcp-tool.port';
-import { TenantProfileEntity } from '../../domain/entities/tenant-profile.entity';
-import { CreateTenantDto } from '../../api/dtos/update-tenant-config.dto';
+import { Injectable, Logger, UnauthorizedException } from "@nestjs/common";
+import { randomBytes } from "crypto";
+import { PrismaService } from "../../../../context/database/prisma.service";
+import { CLEARMINDS_MCP_RESOURCES } from "../../../mcp/infrastructure/resources/clearminds-catalog.resource";
+import { McpResourceDefinition } from "../../../mcp/domain/interfaces/mcp-tool.port";
+import { TenantProfileEntity } from "../../domain/entities/tenant-profile.entity";
+import { CreateTenantDto } from "../../api/dtos/update-tenant-config.dto";
 
 @Injectable()
 export class CrmService {
   private readonly logger = new Logger(CrmService.name);
 
   private fallbackTenant: TenantProfileEntity = {
-    id: 'tenant-clearminds-default',
-    slug: 'clearminds',
-    name: 'Clear Minds / KrakeDev',
-    agentName: 'Fidel',
-    agentRole: 'Asesor Comercial Experto',
-    tone: 'Cercano, consultivo, empático y profesional (máximo 2 emojis por mensaje).',
+    id: "tenant-clearminds-default",
+    slug: "clearminds",
+    name: "Clear Minds / KrakeDev",
+    agentName: "Fidel",
+    agentRole: "Asesor Comercial Experto",
+    tone: "Cercano, consultivo, empático y profesional (máximo 2 emojis por mensaje).",
     globalRules:
-      '1. Nunca te presentes como bot o IA a menos que el cliente lo pregunte directamente; actúas como asesor comercial humano.\n2. Califica al cliente según su línea (Software a la Medida, Academia Krakedev, Cursos AWS, Asistentes IA).\n3. PROHIBIDO inventar fechas de inicio, duraciones, horarios, precios, descuentos, temarios, cuentas bancarias o inclusión de vouchers fuera del catálogo autorizado.\n4. Si pide hablar con asesor humano, cerrar inscripción, datos de pago no disponibles, muestra molestia o pide agendar cita, transfiere inmediatamente.',
+      "1. Nunca te presentes como bot o IA a menos que el cliente lo pregunte directamente; actúas como asesor comercial humano.\n2. Califica al cliente según su línea (Software a la Medida, Academia Krakedev, Cursos AWS, Asistentes IA).\n3. PROHIBIDO inventar fechas de inicio, duraciones, horarios, precios, descuentos, temarios, cuentas bancarias o inclusión de vouchers fuera del catálogo autorizado.\n4. Si pide hablar con asesor humano, cerrar inscripción, datos de pago no disponibles, muestra molestia o pide agendar cita, transfiere inmediatamente.",
     summaryInterval: 5,
   };
 
@@ -27,7 +27,7 @@ export class CrmService {
   async listTenants() {
     try {
       const tenants = await this.prisma.tenant.findMany({
-        orderBy: { createdAt: 'asc' },
+        orderBy: { createdAt: "asc" },
         include: {
           _count: { select: { productLines: true, conversations: true } },
         },
@@ -44,17 +44,19 @@ export class CrmService {
           productLinesCount: t._count.productLines,
           conversationsCount: t._count.conversations,
         })),
-        persistenceMode: 'SUPABASE_POSTGRES',
+        persistenceMode: "SUPABASE_POSTGRES",
       };
     } catch (err) {
-      this.logger.warn(`listTenants en modo fallback: ${(err as Error).message}`);
+      this.logger.warn(
+        `listTenants en modo fallback: ${(err as Error).message}`,
+      );
       return {
         tenants: [
           {
             id: this.fallbackTenant.id,
-            slug: 'clearminds',
-            name: 'Clear Minds / KrakeDev',
-            apiKey: 'fidel_live_clearminds_2026',
+            slug: "clearminds",
+            name: "Clear Minds / KrakeDev",
+            apiKey: "fidel_live_clearminds_2026",
             generalPolicy: this.fallbackTenant.globalRules,
             memoryThreshold: 5,
             isActive: true,
@@ -62,7 +64,7 @@ export class CrmService {
             conversationsCount: 0,
           },
         ],
-        persistenceMode: 'IN_MEMORY_FALLBACK',
+        persistenceMode: "IN_MEMORY_FALLBACK",
       };
     }
   }
@@ -71,8 +73,8 @@ export class CrmService {
     const cleanSlug = dto.slug
       .toLowerCase()
       .trim()
-      .replace(/[^a-z0-9-_]/g, '-');
-    const generatedKey = `fidel_live_${cleanSlug.replace(/-/g, '_')}_${randomBytes(4).toString('hex')}`;
+      .replace(/[^a-z0-9-_]/g, "-");
+    const generatedKey = `fidel_live_${cleanSlug.replace(/-/g, "_")}_${randomBytes(4).toString("hex")}`;
 
     const created = await this.prisma.tenant.upsert({
       where: { slug: cleanSlug },
@@ -96,13 +98,13 @@ export class CrmService {
 
     return {
       tenant: created,
-      persistenceMode: 'SUPABASE_POSTGRES',
+      persistenceMode: "SUPABASE_POSTGRES",
     };
   }
 
   async rotateApiKey(slug: string) {
     const cleanSlug = slug.toLowerCase().trim();
-    const newApiKey = `fidel_live_${cleanSlug.replace(/-/g, '_')}_${randomBytes(5).toString('hex')}`;
+    const newApiKey = `fidel_live_${cleanSlug.replace(/-/g, "_")}_${randomBytes(5).toString("hex")}`;
 
     const updated = await this.prisma.tenant.update({
       where: { slug: cleanSlug },
@@ -113,28 +115,33 @@ export class CrmService {
       slug: updated.slug,
       name: updated.name,
       apiKey: updated.apiKey,
-      message: 'API Key rotada exitosamente en Supabase.',
+      message: "API Key rotada exitosamente en Supabase.",
     };
   }
 
-  async resolveTenantSlug(apiKey?: string, requestedSlug?: string): Promise<string> {
+  async resolveTenantSlug(
+    apiKey?: string,
+    requestedSlug?: string,
+  ): Promise<string> {
     if (apiKey?.trim()) {
       try {
         const tenantByKey = await this.prisma.tenant.findUnique({
           where: { apiKey: apiKey.trim() },
         });
         if (!tenantByKey || !tenantByKey.isActive) {
-          throw new UnauthorizedException('API Key de empresa (x-tenant-key) inválida o inactiva.');
+          throw new UnauthorizedException(
+            "API Key de empresa (x-tenant-key) inválida o inactiva.",
+          );
         }
         return tenantByKey.slug;
       } catch (err) {
         if (err instanceof UnauthorizedException) throw err;
       }
     }
-    return requestedSlug?.trim() || 'clearminds';
+    return requestedSlug?.trim() || "clearminds";
   }
 
-  async getTenantConfig(slug = 'clearminds') {
+  async getTenantConfig(slug = "clearminds") {
     try {
       const tenant = await this.prisma.tenant.findUnique({
         where: { slug },
@@ -155,31 +162,35 @@ export class CrmService {
             summaryInterval: tenant.memoryThreshold,
           },
           productLines: tenant.productLines,
-          persistenceMode: 'SUPABASE_POSTGRES',
+          persistenceMode: "SUPABASE_POSTGRES",
         };
       }
     } catch (err) {
-      this.logger.debug(`Usando configuración en memoria para tenant (${(err as Error).message})`);
+      this.logger.debug(
+        `Usando configuración en memoria para tenant (${(err as Error).message})`,
+      );
     }
 
     return {
       tenant: {
         ...this.fallbackTenant,
-        apiKey: 'fidel_live_clearminds_2026',
+        apiKey: "fidel_live_clearminds_2026",
       },
-      productLines: CLEARMINDS_MCP_RESOURCES.map((r: McpResourceDefinition) => ({
-        key: r.productKey,
-        title: r.name,
-        brochureContext: r.content,
-        requiredFields: r.requiredFields,
-      })),
-      persistenceMode: 'IN_MEMORY_FALLBACK',
+      productLines: CLEARMINDS_MCP_RESOURCES.map(
+        (r: McpResourceDefinition) => ({
+          key: r.productKey,
+          title: r.name,
+          brochureContext: r.content,
+          requiredFields: r.requiredFields,
+        }),
+      ),
+      persistenceMode: "IN_MEMORY_FALLBACK",
     };
   }
 
   async updateTenantConfig(
     slug: string,
-    payload: Partial<Omit<TenantProfileEntity, 'id' | 'slug'>>,
+    payload: Partial<Omit<TenantProfileEntity, "id" | "slug">>,
   ) {
     this.fallbackTenant = {
       ...this.fallbackTenant,
@@ -205,37 +216,42 @@ export class CrmService {
           globalRules: updated.generalPolicy,
           summaryInterval: updated.memoryThreshold,
         },
-        persistenceMode: 'SUPABASE_POSTGRES',
+        persistenceMode: "SUPABASE_POSTGRES",
       };
     } catch {
-      return { tenant: this.fallbackTenant, persistenceMode: 'IN_MEMORY_FALLBACK' };
+      return {
+        tenant: this.fallbackTenant,
+        persistenceMode: "IN_MEMORY_FALLBACK",
+      };
     }
   }
 
   async listAppointments() {
     try {
       const items = await this.prisma.appointment.findMany({
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         take: 25,
       });
-      return { appointments: items, persistenceMode: 'SUPABASE_POSTGRES' };
+      return { appointments: items, persistenceMode: "SUPABASE_POSTGRES" };
     } catch {
-      return { appointments: [], persistenceMode: 'IN_MEMORY_FALLBACK' };
+      return { appointments: [], persistenceMode: "IN_MEMORY_FALLBACK" };
     }
   }
 
-  async listTrainingRules(tenantSlug = 'clearminds') {
-    const tenant = await this.prisma.tenant.findUnique({ where: { slug: tenantSlug } });
+  async listTrainingRules(tenantSlug = "clearminds") {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { slug: tenantSlug },
+    });
     if (!tenant) return { rules: [] };
     const rules = await this.prisma.trainingRule.findMany({
       where: { tenantId: tenant.id },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
     return { rules };
   }
 
   async createTrainingRule(
-    tenantSlug = 'clearminds',
+    tenantSlug = "clearminds",
     params: {
       instruction: string;
       category?: string;
@@ -243,7 +259,9 @@ export class CrmService {
       createdByName?: string;
     },
   ) {
-    const tenant = await this.prisma.tenant.findUnique({ where: { slug: tenantSlug } });
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { slug: tenantSlug },
+    });
     if (!tenant) {
       throw new UnauthorizedException(`Tenant no encontrado: ${tenantSlug}`);
     }
@@ -251,17 +269,23 @@ export class CrmService {
       data: {
         tenantId: tenant.id,
         instruction: params.instruction.trim(),
-        category: (params.category || 'GENERAL').toUpperCase(),
+        category: (params.category || "GENERAL").toUpperCase(),
         sourceFeedback: params.sourceFeedback?.trim() || null,
-        createdByName: params.createdByName?.trim() || 'Entrenador',
+        createdByName: params.createdByName?.trim() || "Entrenador",
         isActive: true,
       },
     });
     return { rule };
   }
 
-  async toggleTrainingRule(tenantSlug: string, ruleId: string, isActive: boolean) {
-    const tenant = await this.prisma.tenant.findUnique({ where: { slug: tenantSlug } });
+  async toggleTrainingRule(
+    tenantSlug: string,
+    ruleId: string,
+    isActive: boolean,
+  ) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { slug: tenantSlug },
+    });
     if (!tenant) return { rules: [] };
     await this.prisma.trainingRule.updateMany({
       where: { id: ruleId, tenantId: tenant.id },
@@ -271,7 +295,9 @@ export class CrmService {
   }
 
   async deleteTrainingRule(tenantSlug: string, ruleId: string) {
-    const tenant = await this.prisma.tenant.findUnique({ where: { slug: tenantSlug } });
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { slug: tenantSlug },
+    });
     if (!tenant) return { rules: [] };
     await this.prisma.trainingRule.deleteMany({
       where: { id: ruleId, tenantId: tenant.id },
@@ -279,27 +305,29 @@ export class CrmService {
     return this.listTrainingRules(tenantSlug);
   }
 
-  async getActiveTrainingRulesBlock(tenantSlug = 'clearminds'): Promise<string> {
+  async getActiveTrainingRulesBlock(
+    tenantSlug = "clearminds",
+  ): Promise<string> {
     try {
       const tenant = await this.prisma.tenant.findUnique({
         where: { slug: tenantSlug },
         select: { id: true },
       });
-      if (!tenant) return '';
+      if (!tenant) return "";
 
       const activeRules = await this.prisma.trainingRule.findMany({
         where: { tenantId: tenant.id, isActive: true },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
       });
-      if (activeRules.length === 0) return '';
+      if (activeRules.length === 0) return "";
 
       const list = activeRules
         .map((r, idx) => `${idx + 1}. [${r.category}] ${r.instruction}`)
-        .join('\n');
+        .join("\n");
 
       return `\n---\nREGLAS Y CORRECCIONES APRENDIDAS EN ENTRENAMIENTO (PRIORIDAD MÁXIMA — DEBES CUMPLIRLAS OBLIGATORIAMENTE SOBRE CUALQUIER OTRA REGLA DE ESTILO O CONTENIDO):\n${list}\n---\n`;
     } catch {
-      return '';
+      return "";
     }
   }
 }

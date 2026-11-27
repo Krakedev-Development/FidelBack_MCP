@@ -1,18 +1,21 @@
-import { McpResourceDefinition, McpToolDefinition } from '../../domain/interfaces/mcp-tool.port';
+import {
+  McpResourceDefinition,
+  McpToolDefinition,
+} from "../../domain/interfaces/mcp-tool.port";
 
 export const CLEARMINDS_MCP_RESOURCES: McpResourceDefinition[] = [
   {
-    uri: 'brochure://software-medida',
-    name: 'Línea A: Software a la Medida (B2B / Gerentes o Dueños de PyMEs)',
+    uri: "brochure://software-medida",
+    name: "Línea A: Software a la Medida (B2B / Gerentes o Dueños de PyMEs)",
     description:
-      'Desarrollo de software personalizado para empresas y PyMEs. Sin precios cerrados; requiere levantamiento de requerimientos con especialista.',
-    mimeType: 'text/markdown',
-    productKey: 'custom_software',
+      "Desarrollo de software personalizado para empresas y PyMEs. Sin precios cerrados; requiere levantamiento de requerimientos con especialista.",
+    mimeType: "text/markdown",
+    productKey: "custom_software",
     requiredFields: [
-      'Nombre del cliente',
-      'Nombre de la empresa',
-      'Giro de negocio',
-      'Necesidad específica o problema a resolver',
+      "Nombre del cliente",
+      "Nombre de la empresa",
+      "Giro de negocio",
+      "Necesidad específica o problema a resolver",
     ],
     content: `# LÍNEA A: SOFTWARE A LA MEDIDA (B2B / PYMES)
 - **Público objetivo**: Gerentes, directivos o dueños de PyMEs.
@@ -21,16 +24,16 @@ export const CLEARMINDS_MCP_RESOURCES: McpResourceDefinition[] = [
 - **Lenguaje técnico**: Ligero y natural (evita tecnicismos innecesarios, demuestra dominio del tema).`,
   },
   {
-    uri: 'brochure://krakedev-academy',
-    name: 'Línea B: Academia de Programación (Krakedev)',
+    uri: "brochure://krakedev-academy",
+    name: "Línea B: Academia de Programación (Krakedev)",
     description:
-      'Formación práctica y especializada en programación orientada al empleo real. Matrícula $40 USD y primer módulo $280 USD.',
-    mimeType: 'text/markdown',
-    productKey: 'krakedev_academy',
+      "Formación práctica y especializada en programación orientada al empleo real. Matrícula $40 USD y primer módulo $280 USD.",
+    mimeType: "text/markdown",
+    productKey: "krakedev_academy",
     requiredFields: [
-      'Nombre (interesado o estudiante)',
-      'Edad del estudiante',
-      'Conocimientos previos de programación',
+      "Nombre (interesado o estudiante)",
+      "Edad del estudiante",
+      "Conocimientos previos de programación",
     ],
     content: `# LÍNEA B: ACADEMIA DE PROGRAMACIÓN (KRAKEDEV)
 - **Público objetivo**: Estudiantes, profesionales en transición o padres de familia.
@@ -43,16 +46,16 @@ export const CLEARMINDS_MCP_RESOURCES: McpResourceDefinition[] = [
   - *¿Son clases presenciales?*: Explica que la metodología es 100% online, interactiva y con acompañamiento cercano, lo que les permite estudiar sin descuidar sus horarios actuales.`,
   },
   {
-    uri: 'brochure://aws-certifications',
-    name: 'Línea C: Cursos y Certificaciones AWS',
+    uri: "brochure://aws-certifications",
+    name: "Línea C: Cursos y Certificaciones AWS",
     description:
-      'Preparación oficial AWS Certified Solutions Architect – Associate (8 semanas, clases 100% en vivo, $235 regular / $165 Black Friday hasta 30 nov; voucher de examen NO incluido).',
-    mimeType: 'text/markdown',
-    productKey: 'aws_certifications',
+      "Preparación oficial AWS Certified Solutions Architect – Associate (8 semanas, clases 100% en vivo, $235 regular / $165 Black Friday hasta 30 nov; voucher de examen NO incluido).",
+    mimeType: "text/markdown",
+    productKey: "aws_certifications",
     requiredFields: [
-      'Nombre del interesado',
-      'Certificación AWS de interés (AWS Solutions Architect – Associate)',
-      'Horario preferido (matutino o nocturno)',
+      "Nombre del interesado",
+      "Certificación AWS de interés (AWS Solutions Architect – Associate)",
+      "Horario preferido (matutino o nocturno)",
     ],
     content: `# LÍNEA C: PREPARACIÓN AWS CERTIFIED SOLUTIONS ARCHITECT – ASSOCIATE
 - **Nombre oficial**: Preparación AWS Certified Solutions Architect – Associate.
@@ -76,16 +79,16 @@ export const CLEARMINDS_MCP_RESOURCES: McpResourceDefinition[] = [
   - Derivar a asesor humano ante solicitudes de inscripción, datos de transferencia/pago no disponibles, facturación, reclamos, descuentos excepcionales o información no validada.`,
   },
   {
-    uri: 'brochure://ai-assistants-b2b',
-    name: 'Línea D: Asistentes de IA para Negocios (B2B / PyMEs)',
+    uri: "brochure://ai-assistants-b2b",
+    name: "Línea D: Asistentes de IA para Negocios (B2B / PyMEs)",
     description:
-      'Automatización inteligente y asistentes de IA para procesos de negocio. Accesos anticipados y soluciones piloto a medida.',
-    mimeType: 'text/markdown',
-    productKey: 'ai_assistants_b2b',
+      "Automatización inteligente y asistentes de IA para procesos de negocio. Accesos anticipados y soluciones piloto a medida.",
+    mimeType: "text/markdown",
+    productKey: "ai_assistants_b2b",
     requiredFields: [
-      'Nombre',
-      'Qué necesita automatizar o resolver',
-      'Giro de negocio',
+      "Nombre",
+      "Qué necesita automatizar o resolver",
+      "Giro de negocio",
     ],
     content: `# LÍNEA D: ASISTENTES DE IA PARA NEGOCIOS (B2B / PYMES)
 - **Datos a recopilar**: Nombre, Qué necesita automatizar o resolver, Giro de negocio.
@@ -96,88 +99,124 @@ export const CLEARMINDS_MCP_RESOURCES: McpResourceDefinition[] = [
 
 export const CLEARMINDS_MCP_TOOLS: McpToolDefinition[] = [
   {
-    name: 'cotizar_descuento_grupo',
+    name: "cotizar_descuento_grupo",
     description:
-      'Devuelve precios y condiciones oficiales para AWS Solutions Architect – Associate ($235 USD regular / $165 USD Black Friday vigente hasta el 30 de noviembre; voucher oficial NO incluido) o Academia Krakedev (matrícula $40 + primer módulo $280). Para Software a la Medida o Asistentes de IA indica sesión de levantamiento sin precios cerrados.',
+      "Devuelve precios y condiciones oficiales para AWS Solutions Architect – Associate ($235 USD regular / $165 USD Black Friday vigente hasta el 30 de noviembre; voucher oficial NO incluido) o Academia Krakedev (matrícula $40 + primer módulo $280). Para Software a la Medida o Asistentes de IA indica sesión de levantamiento sin precios cerrados.",
     inputSchema: {
-      type: 'object',
+      type: "object",
       properties: {
         productKey: {
-          type: 'string',
-          enum: ['custom_software', 'krakedev_academy', 'aws_certifications', 'ai_assistants_b2b'],
-          description: 'Clave de la línea de negocio consultada.',
+          type: "string",
+          enum: [
+            "custom_software",
+            "krakedev_academy",
+            "aws_certifications",
+            "ai_assistants_b2b",
+          ],
+          description: "Clave de la línea de negocio consultada.",
         },
         participants: {
-          type: 'number',
-          description: 'Cantidad de certificaciones (en AWS: 1, 2 o 3) o participantes.',
+          type: "number",
+          description:
+            "Cantidad de certificaciones (en AWS: 1, 2 o 3) o participantes.",
         },
         paymentMode: {
-          type: 'string',
-          enum: ['contado', 'cuotas'],
-          description: 'Modalidad de pago consultada.',
+          type: "string",
+          enum: ["contado", "cuotas"],
+          description: "Modalidad de pago consultada.",
         },
       },
-      required: ['productKey', 'participants'],
+      required: ["productKey", "participants"],
     },
   },
   {
-    name: 'agendar_cita',
+    name: "agendar_cita",
     description:
-      'Registra solicitud de reunión o cita cuando corresponda (Nota: si el cliente pide explícitamente agendar cita o hablar con un asesor, priorizar transferir_a_humano).',
+      "Registra solicitud de reunión o cita cuando corresponda (Nota: si el cliente pide explícitamente agendar cita o hablar con un asesor, priorizar transferir_a_humano).",
     inputSchema: {
-      type: 'object',
+      type: "object",
       properties: {
-        sessionId: { type: 'string', description: 'ID de la sesión de conversación.' },
-        leadName: { type: 'string', description: 'Nombre completo del cliente.' },
-        leadContact: { type: 'string', description: 'Teléfono WhatsApp o correo electrónico.' },
+        sessionId: {
+          type: "string",
+          description: "ID de la sesión de conversación.",
+        },
+        leadName: {
+          type: "string",
+          description: "Nombre completo del cliente.",
+        },
+        leadContact: {
+          type: "string",
+          description: "Teléfono WhatsApp o correo electrónico.",
+        },
         productKey: {
-          type: 'string',
-          enum: ['custom_software', 'krakedev_academy', 'aws_certifications', 'ai_assistants_b2b'],
+          type: "string",
+          enum: [
+            "custom_software",
+            "krakedev_academy",
+            "aws_certifications",
+            "ai_assistants_b2b",
+          ],
         },
         scheduledAt: {
-          type: 'string',
-          description: 'Fecha y hora solicitada (ISO 8601 o texto descriptivo).',
+          type: "string",
+          description:
+            "Fecha y hora solicitada (ISO 8601 o texto descriptivo).",
         },
-        notes: { type: 'string', description: 'Notas del requerimiento o contexto comercial.' },
+        notes: {
+          type: "string",
+          description: "Notas del requerimiento o contexto comercial.",
+        },
       },
-      required: ['leadName', 'productKey', 'scheduledAt'],
+      required: ["leadName", "productKey", "scheduledAt"],
     },
   },
   {
-    name: 'registrar_lead_crm',
+    name: "registrar_lead_crm",
     description:
-      'Guarda o actualiza en tiempo real los atributos comerciales extraídos del prospecto y su nivel de intención en el CRM.',
+      "Guarda o actualiza en tiempo real los atributos comerciales extraídos del prospecto y su nivel de intención en el CRM.",
     inputSchema: {
-      type: 'object',
+      type: "object",
       properties: {
-        sessionId: { type: 'string' },
+        sessionId: { type: "string" },
         productKey: {
-          type: 'string',
-          enum: ['custom_software', 'krakedev_academy', 'aws_certifications', 'ai_assistants_b2b'],
+          type: "string",
+          enum: [
+            "custom_software",
+            "krakedev_academy",
+            "aws_certifications",
+            "ai_assistants_b2b",
+          ],
         },
         intentLevel: {
-          type: 'string',
-          enum: ['ALTO', 'MEDIO', 'BAJO'],
+          type: "string",
+          enum: ["ALTO", "MEDIO", "BAJO"],
         },
         extractedFields: {
-          type: 'object',
-          description: 'Mapa clave-valor de campos extraídos según la línea de negocio.',
+          type: "object",
+          description:
+            "Mapa clave-valor de campos extraídos según la línea de negocio.",
         },
       },
-      required: ['productKey', 'extractedFields'],
+      required: ["productKey", "extractedFields"],
     },
   },
   {
-    name: 'transferir_a_humano',
+    name: "transferir_a_humano",
     description:
-      'Cambia el estado de la conversación a HUMAN_ACTIVE (Modo Espejo / Escalamiento) cuando el cliente pide hablar con un asesor, muestra molestia/fricción o manifiesta intención explícita de agendar una cita o reunión.',
+      "Cambia el estado de la conversación a HUMAN_ACTIVE (Modo Espejo / Escalamiento) cuando el cliente pide hablar con un asesor, muestra molestia/fricción o manifiesta intención explícita de agendar una cita o reunión.",
     inputSchema: {
-      type: 'object',
+      type: "object",
       properties: {
-        sessionId: { type: 'string', description: 'ID de la sesión a transferir.' },
-        reason: { type: 'string', description: 'Motivo de la transferencia al asesor humano.' },
+        sessionId: {
+          type: "string",
+          description: "ID de la sesión a transferir.",
+        },
+        reason: {
+          type: "string",
+          description: "Motivo de la transferencia al asesor humano.",
+        },
       },
-      required: ['sessionId', 'reason'],
+      required: ["sessionId", "reason"],
     },
   },
 ];

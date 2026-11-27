@@ -1,11 +1,11 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
-import { createHash, randomBytes } from 'crypto';
-import { PrismaService } from '../../../../context/database/prisma.service';
-import { EnvironmentVariables } from '../../../../context/config/app.config';
-import { durationToMs } from '../../../../common/utils/duration.util';
-import { HASHER_PORT, HasherPort } from '../../domain/interfaces/hasher.port';
+import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import { JwtService } from "@nestjs/jwt";
+import { createHash, randomBytes } from "crypto";
+import { PrismaService } from "../../../../context/database/prisma.service";
+import { EnvironmentVariables } from "../../../../context/config/app.config";
+import { durationToMs } from "../../../../common/utils/duration.util";
+import { HASHER_PORT, HasherPort } from "../../domain/interfaces/hasher.port";
 
 export interface AuthTokenResult {
   accessToken: string;
@@ -43,7 +43,7 @@ export class TokenIssuerService {
   ) {}
 
   private hashTokenSha256(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
+    return createHash("sha256").update(token).digest("hex");
   }
 
   async login(
@@ -57,12 +57,17 @@ export class TokenIssuerService {
     });
 
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('Credenciales inválidas o usuario inactivo.');
+      throw new UnauthorizedException(
+        "Credenciales inválidas o usuario inactivo.",
+      );
     }
 
-    const isPasswordValid = await this.hasher.compare(password, user.passwordHash);
+    const isPasswordValid = await this.hasher.compare(
+      password,
+      user.passwordHash,
+    );
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Credenciales inválidas.');
+      throw new UnauthorizedException("Credenciales inválidas.");
     }
 
     return this.issueTokensForUser({
@@ -70,7 +75,7 @@ export class TokenIssuerService {
       email: user.email,
       fullName: user.fullName,
       role: user.role,
-      tenantSlug: user.tenantSlug || 'clearminds',
+      tenantSlug: user.tenantSlug || "clearminds",
     });
   }
 
@@ -81,9 +86,13 @@ export class TokenIssuerService {
     role: string;
     tenantSlug: string;
   }): Promise<AuthTokenResult> {
-    const jwtSecret = this.configService.get('JWT_SECRET', { infer: true });
-    const accessExpiration = this.configService.get('JWT_EXPIRES_IN', { infer: true });
-    const refreshExpiration = this.configService.get('JWT_REFRESH_EXPIRES_IN', { infer: true });
+    const jwtSecret = this.configService.get("JWT_SECRET", { infer: true });
+    const accessExpiration = this.configService.get("JWT_EXPIRES_IN", {
+      infer: true,
+    });
+    const refreshExpiration = this.configService.get("JWT_REFRESH_EXPIRES_IN", {
+      infer: true,
+    });
     const refreshMaxAgeMs = durationToMs(refreshExpiration);
 
     const accessToken = await this.jwtService.signAsync(
@@ -92,7 +101,7 @@ export class TokenIssuerService {
         email: user.email,
         role: user.role,
         tenantSlug: user.tenantSlug,
-        typ: 'access',
+        typ: "access",
       },
       {
         secret: jwtSecret,
@@ -100,7 +109,7 @@ export class TokenIssuerService {
       },
     );
 
-    const rawRefreshToken = randomBytes(48).toString('hex');
+    const rawRefreshToken = randomBytes(48).toString("hex");
     const tokenHash = this.hashTokenSha256(rawRefreshToken);
 
     this.refreshStore.set(tokenHash, {
@@ -136,7 +145,7 @@ export class TokenIssuerService {
     const existing = this.refreshStore.get(tokenHash);
 
     if (!existing) {
-      throw new UnauthorizedException('Refresh token inválido.');
+      throw new UnauthorizedException("Refresh token inválido.");
     }
 
     if (existing.isRevoked) {
@@ -145,11 +154,13 @@ export class TokenIssuerService {
           session.isRevoked = true;
         }
       }
-      throw new UnauthorizedException('Reutilización de token detectada. Sesiones revocadas.');
+      throw new UnauthorizedException(
+        "Reutilización de token detectada. Sesiones revocadas.",
+      );
     }
 
     if (existing.expiresAt < Date.now()) {
-      throw new UnauthorizedException('Refresh token expirado.');
+      throw new UnauthorizedException("Refresh token expirado.");
     }
 
     existing.isRevoked = true;

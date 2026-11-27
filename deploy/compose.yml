@@ -1,0 +1,78 @@
+# Stack de producción de FidelBack_MCP.
+# Destino: /srv/docker/fidelback-mcp/compose.yml
+#
+# Estructura esperada en el VPS:
+#   /srv/docker/fidelback-mcp/.env        -> POSTGRES_PASSWORD (solo interpila este archivo)
+#   /srv/docker/fidelback-mcp/api/        -> release activo del repositorio
+#   /srv/docker/fidelback-mcp/api/.env    -> variables de la API (no viaja en el repositorio)
+#
+# Nada de esto se publica a internet: la única entrada es Nginx en 80/443,
+# que hace proxy a 127.0.0.1:4001.
+
+services:
+  db:
+    # Misma major que el dump restaurado (fidel_db_2026-11-25.dump: PostgreSQL 17.11).
+    # Un servidor más nuevo que el dump siempre es seguro; al revés puede fallar.
+    image: postgres:17-alpine
+    container_name: fidelback-mcp-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: app_user
+      POSTGRES_DB: app_db
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD en /srv/docker/fidelback-mcp/.env}
+    volumes:
+      - fidelback_mcp_data:/var/lib/postgresql/data
+    networks: [internal]
+    # Sin "ports": la base de datos NO se publica.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_user -d app_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: ./api
+    image: fidelback-api:latest
+    container_name: fidelback-api
+    restart: unless-stopped
+    env_file:
+      - ./api/.env
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      # Se deriva de POSTGRES_PASSWORD: no dupliques DATABASE_URL en api/.env,
+      # aquí se sobrescribe de todos modos.
+      DATABASE_URL: "postgresql://app_user:${POSTGRES_PASSWORD}@db:5432/app_db?schema=public"
+      DIRECT_URL: "postgresql://app_user:${POSTGRES_PASSWORD}@db:5432/app_db?schema=public"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # Host 4001 -> contenedor 4000. Solo loopback.
+      - "127.0.0.1:4001:4000"
+    networks: [internal]
+    # La API no expone /health HTTP: se comprueba que acepte conexiones TCP en su puerto.
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "const s=require('net').connect(4000,'127.0.0.1');s.on('connect',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1));"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  # Nombre explícito para no colisionar con el volumen de otro stack.
+  fidelback_mcp_data:
+    name: fidelback_mcp_data
+
+networks:
+  internal:
+    driver: bridge
