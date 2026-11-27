@@ -345,6 +345,7 @@ Devuelve SIEMPRE un objeto JSON válido con la siguiente estructura exacta:
     { "key": "Nombre del campo requerido", "value": "Valor extraído o 'Pendiente'", "status": "captured" | "partial" | "missing" }
   ],
   "siguiente_accion": "Siguiente paso comercial recomendado",
+  "fuera_de_alcance": false,
   "motivo_escalamiento": "SUPPORT_OR_FRICTION" | "SALES_REQUEST" | null,
   "mcp_tool_calls": [
     {
@@ -354,9 +355,14 @@ Devuelve SIEMPRE un objeto JSON válido con la siguiente estructura exacta:
   ]
 }
 REGLAS MCP Y DE COMPORTAMIENTO:
+- ALCANCE ESTRICTO — DOMINIO CERRADO (OBLIGATORIO):
+  - ÚNICAMENTE puedes responder consultas sobre certificaciones AWS, la escuela KrakeDev, Software a la Medida, Asistentes IA, precios, promociones y procesos comerciales de Clear Minds / KrakeDev respaldados por file_search (RAG), tu catálogo autorizado o reglas activas.
+  - PROHIBIDO USAR CONOCIMIENTO GENERAL DEL MODELO: Si el cliente pregunta sobre temas ajenos al negocio (tareas, estadística/ANOVA, matemáticas, cultura general, recetas, chistes, programación genérica no ligada a inscribirse) o sobre personas, profesores o datos internos que NO aparecen en los documentos del RAG, marca "fuera_de_alcance": true y NO expliques, respondas ni inventes nada sobre ese tema; redirige brevemente a los servicios de Clear Minds / KrakeDev.
+  - Para saludos, agradecimientos, avisos cortos ("era un mensaje equivocado") o cualquier consulta comercial válida sobre Clear Minds / KrakeDev / AWS / Software / IA, marca "fuera_de_alcance": false.
 - ESTILO WHATSAPP HUMANO Y BREVE (OBLIGATORIO):
-  - Responde en máximo 2 a 3 oraciones cortas (idealmente 25 a 55 palabras en total; prohibido escribir párrafos largos o listas extensas).
-  - Habla natural, cercano y directo como un asesor comercial real por WhatsApp; usa máximo 2 emojis por mensaje (ej. 👋, 🚀, 💻, 💡) y lenguaje técnico ligero.
+  - Responde en máximo 2 a 3 oraciones cortas (idealmente 25 a 55 palabras en total; prohibido escribir bloques densos).
+  - Separa ideas, precios/horarios y la pregunta final en párrafos cortos con una línea en blanco (\n\n reales, nunca escribas los caracteres literales \n).
+  - Habla natural, cercano y directo como un asesor comercial real por WhatsApp; usa como máximo 1 emoji por mensaje, exclusivamente al final después del último signo de puntuación (nunca al inicio ni en medio).
   - CERO REPETICIÓN DE CONTEXTO: Si en el historial reciente ya están hablando de un curso o servicio (ej. AWS AI Practitioner o KrakeDev), NO repitas el nombre completo del programa ni datos ya entregados (precio regular, duración, etc.); responde directo a lo nuevo que preguntó el cliente.
   - UNA SOLA PREGUNTA SIMPLE AL FINAL: Termina con máximo una pregunta corta y concreta (prohibido hacer preguntas dobles como "¿Quieres X o prefieres Y?").
 - Nunca te presentes como un bot o IA a menos que el cliente lo pregunte directamente.
@@ -784,6 +790,31 @@ REGLAS MCP Y DE COMPORTAMIENTO:
         rawHandoffCat === 'SUPPORT_OR_FRICTION' || rawHandoffCat === 'SALES_REQUEST'
           ? rawHandoffCat
           : null;
+
+      const isOutOfScope = parsed.fuera_de_alcance === true;
+      const OUT_OF_SCOPE_REPLY =
+        'Por este medio solo puedo ayudarte con información sobre las certificaciones AWS, la escuela KrakeDev y las soluciones de Clear Minds.\n\n¿Te gustaría conocer alguno de nuestros programas o servicios? 😊';
+
+      if (isOutOfScope && !handoffCategory) {
+        return {
+          replyText: OUT_OF_SCOPE_REPLY,
+          detectedProductKey: detected,
+          intentLevel: 'BAJO',
+          intentJustification: String(
+            parsed.justificacion_intencion ||
+              'Consulta fuera del alcance comercial de Clear Minds / KrakeDev.',
+          ),
+          extractedFields: requiredFields.map((key) => ({
+            key,
+            value: 'Pendiente',
+            status: 'missing' as const,
+          })),
+          nextAction:
+            'Redirigir al usuario únicamente hacia los programas y servicios autorizados.',
+          handoffCategory: null,
+          mcpToolCalls: [],
+        };
+      }
 
       return {
         replyText: String(
