@@ -166,6 +166,31 @@ export class ProcessInboundMessageUseCase {
     return hour >= 8 && hour < 17;
   }
 
+  private isDirectEnrollmentOrPaymentIntent(message: string): boolean {
+    const norm = message
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+
+    if (
+      /\bno\s+(me\s+)?(quiero|deseo|voy\s+a|quisiera)\s+(inscribir|matricular|pagar|comprar)/i.test(
+        norm,
+      )
+    ) {
+      return false;
+    }
+
+    return (
+      /\b(ya\s+)?(me\s+)?(quiero|deseo|voy\s+a|quisiera)\s+(inscribir\w*|matricular\w*|pagar|registrar\w*|comprar|reservar(\s+mi)?\s+cupo)\b/i.test(
+        norm,
+      ) ||
+      /\b(list[oa]\s+para\s+(inscribir\w*|matricular\w*|pagar)|quiero\s+hacer\s+el\s+pago|pasame\s+(los\s+)?datos\s+de\s+pago)\b/i.test(
+        norm,
+      )
+    );
+  }
+
   private async buildAdSummary(
     adContext: AdContextInput,
     apiKey?: string,
@@ -465,6 +490,20 @@ export class ProcessInboundMessageUseCase {
 
     const mcpExecutions: McpToolExecutionResult[] = [];
     let handoffRequested = false;
+
+    const alreadyHasHandoff = llmOutput.mcpToolCalls.some(
+      (t) => t.toolName === 'transferir_a_humano',
+    );
+    if (this.isDirectEnrollmentOrPaymentIntent(params.message) && !alreadyHasHandoff) {
+      llmOutput.mcpToolCalls.push({
+        toolName: 'transferir_a_humano',
+        arguments: { reason: 'direct_enrollment_intent' },
+      });
+      llmOutput.handoffCategory = 'SALES_REQUEST';
+      llmOutput.intentLevel = 'ALTO';
+      llmOutput.replyText =
+        '¡Perfecto! Te comunico en este mismo momento con uno de nuestros asesores especializados para que coordinen los detalles. Dame un segundo por favor 🤝';
+    }
 
     for (const toolCall of llmOutput.mcpToolCalls) {
       const execResult = await this.mcpRegistry.executeTool(toolCall.toolName, {
