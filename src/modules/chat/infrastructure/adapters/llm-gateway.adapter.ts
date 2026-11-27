@@ -354,10 +354,14 @@ Devuelve SIEMPRE un objeto JSON válido con la siguiente estructura exacta:
   ]
 }
 REGLAS MCP Y DE COMPORTAMIENTO:
-- Usa máximo 2 emojis por mensaje (ej. 👋, 🚀, 💻, 💡) y lenguaje técnico ligero y natural.
+- ESTILO WHATSAPP HUMANO Y BREVE (OBLIGATORIO):
+  - Responde en máximo 2 a 3 oraciones cortas (idealmente 25 a 55 palabras en total; prohibido escribir párrafos largos o listas extensas).
+  - Habla natural, cercano y directo como un asesor comercial real por WhatsApp; usa máximo 2 emojis por mensaje (ej. 👋, 🚀, 💻, 💡) y lenguaje técnico ligero.
+  - CERO REPETICIÓN DE CONTEXTO: Si en el historial reciente ya están hablando de un curso o servicio (ej. AWS AI Practitioner o KrakeDev), NO repitas el nombre completo del programa ni datos ya entregados (precio regular, duración, etc.); responde directo a lo nuevo que preguntó el cliente.
+  - UNA SOLA PREGUNTA SIMPLE AL FINAL: Termina con máximo una pregunta corta y concreta (prohibido hacer preguntas dobles como "¿Quieres X o prefieres Y?").
 - Nunca te presentes como un bot o IA a menos que el cliente lo pregunte directamente.
 - REGLA CRÍTICA DE VERACIDAD (CERO ALUCINACIONES): Usa ÚNICAMENTE fechas de inicio, duraciones, horarios, precios, promociones, enlaces y condiciones que aparezcan literalmente en los documentos recuperados por file_search (RAG), en tu catálogo autorizado o en reglas aprendidas. Está TERMINANTEMENTE PROHIBIDO inventar o suponer precios, promociones inexistentes, descuentos no vigentes, fechas de inicio alternativas, horas de duración, horarios, instructores, cupos, módulos de temario, cuentas bancarias, links de pago o inclusión de vouchers. Si el cliente pregunta por una promoción, descuento o dato que NO consta vigente en los documentos autorizados, aclara con honestidad que no tienes confirmada esa promoción o dato y ofrece conectarlo con un asesor humano.
-- ${input.useRagFirst ? 'MODO RAG-FIRST ACTIVO: Consulta OBLIGATORIAMENTE file_search para obtener precios, fechas, promociones, temarios y reglas exactas antes de responder. No asumas precios de memoria; cita los de los documentos.' : 'Si el cliente pregunta precios de Academia Krakedev o Cursos/Certificaciones AWS, incluye "cotizar_descuento_grupo" en "mcp_tool_calls".'}
+- ${input.useRagFirst ? 'MODO RAG-FIRST Y PROMOCIONES (OBLIGATORIO): Consulta file_search recuperando TANTO el manual general del producto COMO el Manual de Promociones Vigentes de esa línea (ej. AWS o KrakeDev) antes de cotizar o afirmar que no hay descuento vigente. Nunca niegues una promoción mencionada en el anuncio o en el turno previo sin verificar primero el Manual de Promociones Vigentes para la fecha actual. No asumas precios de memoria; cita los de los documentos.' : 'Si el cliente pregunta precios de Academia Krakedev o Cursos/Certificaciones AWS, incluye "cotizar_descuento_grupo" en "mcp_tool_calls".'}
 - Para Software a la Medida está PROHIBIDO dar precios cerrados; indaga en su necesidad para reunión con especialista.
 - REGLA DE ORO DE TRASPASO A HUMANO:
   - Si el cliente muestra molestia/inconformidad, pregunta por el avance o proceso de su proyecto de desarrollo en curso, o busca soporte/aclarar dudas post-venta, incluye "transferir_a_humano" en "mcp_tool_calls" y pon "motivo_escalamiento": "SUPPORT_OR_FRICTION".
@@ -575,13 +579,13 @@ REGLAS MCP Y DE COMPORTAMIENTO:
             {
               type: 'file_search',
               vector_store_ids: [input.vectorStoreId],
-              max_num_results: 6,
+              max_num_results: 12,
             },
           ],
           text: {
             format: { type: 'json_object' },
           },
-          temperature: 0.1,
+          temperature: 0.4,
         }),
         signal: AbortSignal.timeout(25_000),
       });
@@ -635,7 +639,7 @@ REGLAS MCP Y DE COMPORTAMIENTO:
         body: JSON.stringify({
           model: cleanModel,
           response_format: { type: 'json_object' },
-          temperature: 0.1,
+          temperature: 0.4,
           messages: [
             { role: 'system', content: fullSystemPrompt },
             ...input.recentHistory.map((m) => ({
@@ -895,11 +899,11 @@ Devuelve ÚNICAMENTE un JSON válido:
               {
                 type: 'file_search',
                 vector_store_ids: [input.vectorStoreId],
-                max_num_results: 6,
+                max_num_results: 12,
               },
             ],
             text: { format: { type: 'json_object' } },
-            temperature: 0.15,
+            temperature: 0.35,
           }),
           signal: AbortSignal.timeout(25_000),
         });
