@@ -7,6 +7,7 @@ import {
   McpToolExecutionResult,
 } from '../../../mcp/domain/interfaces/mcp-tool.port';
 import { CrmService } from '../../../crm/application/services/crm.service';
+import { OpenAiRagService } from '../../../knowledge/application/services/openai-rag.service';
 import { LlmGatewayAdapter } from '../../infrastructure/adapters/llm-gateway.adapter';
 import {
   AdContextInput,
@@ -20,6 +21,7 @@ export interface InMemorySessionState {
   status: 'AI_ACTIVE' | 'HUMAN_ACTIVE' | 'CLOSED';
   activeProductKey: ProductLineKey | null;
   adSummary?: string;
+  broadcastContext?: string;
   incrementalSummary: string;
   messagesCount: number;
   extractedFields: StructuredExtractionItem[];
@@ -40,6 +42,7 @@ export class ProcessInboundMessageUseCase {
     private readonly crmService: CrmService,
     private readonly mcpRegistry: McpRegistryService,
     private readonly llmGateway: LlmGatewayAdapter,
+    private readonly openAiRag: OpenAiRagService,
   ) {}
 
   getOrCreateMemorySession(
@@ -93,7 +96,11 @@ export class ProcessInboundMessageUseCase {
     return hour >= 8 && hour < 17;
   }
 
-  private async buildAdSummary(adContext: AdContextInput, apiKey?: string): Promise<string> {
+  private async buildAdSummary(
+    adContext: AdContextInput,
+    apiKey?: string,
+    provider?: 'gemini' | 'openai',
+  ): Promise<string> {
     const parts: string[] = [];
 
     if (adContext.campaignName?.trim()) {
@@ -119,6 +126,7 @@ export class ProcessInboundMessageUseCase {
         adContext.imageUrl.trim(),
         adContext.sourceId,
         apiKey,
+        provider,
       );
       if (visualText) {
         parts.push(`Contenido visual de la imagen del anuncio: "${visualText}"`);
@@ -171,6 +179,7 @@ export class ProcessInboundMessageUseCase {
     trainingMode?: boolean;
     trainerName?: string;
     adContext?: AdContextInput;
+    broadcastContext?: string;
   }) {
     // 0. Resolver empresa (Tenant) por x-tenant-key o tenantSlug
     const resolvedTenantSlug = await this.crmService.resolveTenantSlug(
@@ -189,10 +198,14 @@ export class ProcessInboundMessageUseCase {
     }
 
     if (params.adContext && !session.adSummary) {
-      const summary = await this.buildAdSummary(params.adContext, params.apiKey);
+      const summary = await this.buildAdSummary(params.adContext, params.apiKey, params.provider);
       if (summary) {
         session.adSummary = summary;
       }
+    }
+
+    if (params.broadcastContext?.trim()) {
+      session.broadcastContext = params.broadcastContext.trim();
     }
 
     const incomingRole = params.senderRole || 'user';
@@ -246,10 +259,32 @@ export class ProcessInboundMessageUseCase {
       : null;
 
     const activeRulesBlock = await this.crmService.getActiveTrainingRulesBlock(resolvedTenantSlug);
+    const todayEcuador = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Guayaquil',
+    }).format(new Date());
+
+    const ragInfo = await this.openAiRag.getActiveVectorStoreInfo(resolvedTenantSlug);
+    const useRagFirst =
+      params.provider === 'openai' &&
+      Boolean(ragInfo.vectorStoreId) &&
+      ragInfo.readyDocumentsCount > 0;
+
+    const ragCatalogSummary = isClearMinds
+      ? CLEARMINDS_MCP_RESOURCES.map(
+          (r: McpResourceDefinition) =>
+            `- [${r.productKey}] ${r.name} (Campos CRM: ${r.requiredFields.join(', ')})`,
+        ).join('\n')
+      : (tenantConfig.productLines || [])
+          .map((p: Record<string, unknown>) => `- [${String(p.id || p.key)}] ${String(p.name || p.title)}`)
+          .join('\n');
+
+    const knowledgeSection = useRagFirst
+      ? `LÍNEAS DE NEGOCIO PARA CLASIFICACIÓN CRM:\n${ragCatalogSummary || '- General'}\n\nFUENTE PRINCIPAL DE CONOCIMIENTO (RAG VECTOR STORE ACTIVO - ${ragInfo.readyDocumentsCount} documento(s)):\n- Usa OBLIGATORIAMENTE la herramienta file_search para consultar manuales de comportamiento de Fidel, productos, campañas, precios, fechas de inicio, horarios, temarios y promociones vigentes.\n- JERARQUÍA OBLIGATORIA: Ante cualquier diferencia de precios, fechas, horarios o promociones entre POLÍTICA Y REGLAS y los documentos recuperados por file_search (RAG), PREVALECEN SIEMPRE los documentos del RAG y las REGLAS APRENDIDAS activas.\n- No respondas usando suposiciones ni promociones viejas que no aparezcan activas en los documentos del RAG para la fecha actual (${todayEcuador}).\n- Si una promoción o dato consultado no aparece vigente en los documentos del RAG, dilo con honestidad y escala a un asesor humano.`
+      : `CATÁLOGO / CONOCIMIENTO:\n${allBrochuresContext}`;
 
     const systemPrompt =
       params.customSystemPrompt?.trim() ||
-      `Eres ${tenantConfig.tenant.agentName}, ${tenantConfig.tenant.agentRole} de la empresa "${tenantConfig.tenant.name}" (tenant: ${resolvedTenantSlug}).\nTONO: ${tenantConfig.tenant.tone}\nPOLÍTICA Y REGLAS DE LA EMPRESA:\n${tenantConfig.tenant.globalRules}\n\nREGLA OBLIGATORIA DE FIDELIDAD DE DATOS:\n- Obedece estrictamente los datos confirmados en CATÁLOGO / CONOCIMIENTO y REGLAS APRENDIDAS.\n- NUNCA inventes fechas de inicio, duraciones, horarios, precios, descuentos, cuentas bancarias, links de pago ni inclusión de vouchers.\n\nCATÁLOGO / CONOCIMIENTO:\n${allBrochuresContext}${activeRulesBlock}`;
+      `Eres ${tenantConfig.tenant.agentName}, ${tenantConfig.tenant.agentRole} de la empresa "${tenantConfig.tenant.name}" (tenant: ${resolvedTenantSlug}).\nFECHA ACTUAL (Ecuador): ${todayEcuador} — úsala para validar si una promoción o fecha de inicio está vigente.\nTONO: ${tenantConfig.tenant.tone}\nPOLÍTICA Y REGLAS DE LA EMPRESA:\n${tenantConfig.tenant.globalRules}\n\nREGLA OBLIGATORIA DE FIDELIDAD DE DATOS:\n- Obedece estrictamente los datos confirmados en los documentos del RAG (file_search), CATÁLOGO / CONOCIMIENTO y REGLAS APRENDIDAS.\n- NUNCA inventes fechas de inicio, duraciones, horarios, precios, promociones, descuentos, cuentas bancarias, links de pago ni inclusión de vouchers.\n\n${knowledgeSection}${activeRulesBlock}`;
 
     const recentHistory = session.history
       .slice(-8, -1)
@@ -264,6 +299,7 @@ export class ProcessInboundMessageUseCase {
         model: params.model,
         apiKey: params.apiKey,
         systemPrompt,
+        vectorStoreId: useRagFirst ? ragInfo.vectorStoreId : null,
         recentHistory,
         userMessage: params.message,
       });
@@ -287,6 +323,19 @@ export class ProcessInboundMessageUseCase {
         role: 'assistant',
         content: trainingOut.reply,
         createdAt: new Date().toISOString(),
+      });
+
+      await this.persistTurnInSupabase({
+        sessionId: session.sessionId,
+        tenantId: tenantConfig.tenant.id,
+        productKey: session.activeProductKey,
+        controlState: session.status,
+        userMessage: params.message,
+        aiReply: trainingOut.reply,
+        intentLevel: 'MEDIO',
+        nextAction: 'Continuar roleplay / entrenamiento',
+        extractedFields: session.extractedFields,
+        mcpExecutions: [],
       });
 
       return {
@@ -317,6 +366,9 @@ export class ProcessInboundMessageUseCase {
       requiredFields: activeResource ? activeResource.requiredFields : [],
       incrementalSummary: session.incrementalSummary,
       adSummary: session.adSummary,
+      broadcastContext: params.broadcastContext?.trim() || session.broadcastContext,
+      vectorStoreId: useRagFirst ? ragInfo.vectorStoreId : null,
+      useRagFirst,
       recentHistory,
       userMessage: params.message,
     });
@@ -389,8 +441,8 @@ export class ProcessInboundMessageUseCase {
     });
     session.messagesCount += 1;
 
-    // Persistir conversación y mensajes en Supabase de manera asíncrona sin bloquear
-    void this.persistTurnInSupabase({
+    // Persistir conversación y mensajes en Supabase garantizando programación de seguimiento
+    await this.persistTurnInSupabase({
       sessionId: session.sessionId,
       tenantId: tenantConfig.tenant.id,
       productKey: session.activeProductKey,
@@ -448,7 +500,7 @@ export class ProcessInboundMessageUseCase {
   private async persistTurnInSupabase(data: {
     sessionId: string;
     tenantId: string;
-    productKey: string;
+    productKey: string | null;
     controlState: string;
     userMessage: string;
     aiReply: string;
@@ -458,9 +510,11 @@ export class ProcessInboundMessageUseCase {
     mcpExecutions: McpToolExecutionResult[];
   }): Promise<void> {
     try {
-      const validProductLine = await this.prisma.productLine.findUnique({
-        where: { id: data.productKey },
-      });
+      const validProductLine = data.productKey
+        ? await this.prisma.productLine.findUnique({
+            where: { id: data.productKey },
+          })
+        : null;
 
       const now = new Date();
       const firstFollowUpAt =
@@ -523,7 +577,7 @@ export class ProcessInboundMessageUseCase {
         },
       });
     } catch (err) {
-      this.logger.debug(`Error no bloqueante al persistir turno en Supabase: ${(err as Error).message}`);
+      this.logger.warn(`Error no bloqueante al persistir turno en Supabase: ${(err as Error).message}`);
     }
   }
 
@@ -557,7 +611,18 @@ export class ProcessInboundMessageUseCase {
         : 'Usa estrictamente la información y datos contextuales proporcionados.';
 
     const activeRulesBlock = await this.crmService.getActiveTrainingRulesBlock(resolvedTenantSlug);
-    const systemPrompt = `Eres ${tenantConfig.tenant.agentName}, ${tenantConfig.tenant.agentRole} de la empresa "${tenantConfig.tenant.name}" (tenant: ${resolvedTenantSlug}).\nTONO: ${tenantConfig.tenant.tone}\nPOLÍTICA Y REGLAS DE LA EMPRESA:\n${tenantConfig.tenant.globalRules}\n\nCATÁLOGO / CONOCIMIENTO:\n${allBrochuresContext}${activeRulesBlock}`;
+    const defaultProvider = this.llmGateway.getDefaultProvider();
+    const defaultModel = this.llmGateway.getDefaultModel(defaultProvider);
+    const ragInfo = await this.openAiRag.getActiveVectorStoreInfo(resolvedTenantSlug);
+    const useRagFirst =
+      defaultProvider === 'openai' &&
+      Boolean(ragInfo.vectorStoreId) &&
+      ragInfo.readyDocumentsCount > 0;
+    const todayEcuador = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Guayaquil',
+    }).format(new Date());
+
+    const systemPrompt = `Eres ${tenantConfig.tenant.agentName}, ${tenantConfig.tenant.agentRole} de la empresa "${tenantConfig.tenant.name}" (tenant: ${resolvedTenantSlug}).\nFECHA ACTUAL (Ecuador): ${todayEcuador}\nTONO: ${tenantConfig.tenant.tone}\nPOLÍTICA Y REGLAS DE LA EMPRESA:\n${tenantConfig.tenant.globalRules}\n\n${useRagFirst ? 'Usa file_search (RAG Vector Store) como fuente principal de conocimiento.' : `CATÁLOGO / CONOCIMIENTO:\n${allBrochuresContext}`}${activeRulesBlock}`;
 
     const recentHistory = (params.history || []).slice(-12).map((h) => ({
       role: (h.role === 'fidel' ? 'assistant' : 'user') as 'user' | 'assistant',
@@ -565,9 +630,10 @@ export class ProcessInboundMessageUseCase {
     }));
 
     const out = await this.llmGateway.generateTrainingTurn({
-      provider: 'gemini',
-      model: 'gemini-flash-lite-latest',
+      provider: defaultProvider,
+      model: defaultModel,
       systemPrompt,
+      vectorStoreId: useRagFirst ? ragInfo.vectorStoreId : null,
       recentHistory,
       userMessage: params.message,
     });

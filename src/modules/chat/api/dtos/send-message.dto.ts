@@ -23,18 +23,18 @@ export class SendMessageDto {
   @IsOptional()
   tenantSlug?: string;
 
-  @ApiPropertyOptional({ enum: ['gemini', 'openai'], default: 'gemini' })
+  @ApiPropertyOptional({ enum: ['gemini', 'openai'], default: 'openai' })
   @IsIn(['gemini', 'openai'])
   @IsOptional()
   provider?: 'gemini' | 'openai';
 
-  @ApiPropertyOptional({ default: 'gemini-flash-lite-latest' })
+  @ApiPropertyOptional({ default: 'gpt-4.1-mini' })
   @IsString()
   @IsOptional()
   model?: string;
 
   @ApiPropertyOptional({
-    description: 'API Key opcional de LLM (por defecto usa la GEMINI_API_KEY protegida en el servidor)',
+    description: 'API Key opcional de LLM (por defecto usa la key configurada en el servidor)',
   })
   @IsString()
   @IsOptional()
@@ -75,6 +75,11 @@ export class SendMessageDto {
   @IsObject()
   @IsOptional()
   adContext?: AdContextInput;
+
+  @ApiPropertyOptional({ description: 'Contexto del envío masivo o plantilla enviada previamente al cliente' })
+  @IsString()
+  @IsOptional()
+  broadcastContext?: string;
 }
 
 export class TestLlmConnectionDto {

@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { IsEnum, IsNumber, IsOptional, IsString, validateSync } from 'class-validator';
+import { IsEnum, IsIn, IsNumber, IsOptional, IsString, validateSync } from 'class-validator';
 
 export enum Environment {
   Development = 'development',
@@ -49,6 +49,22 @@ export class EnvironmentVariables {
   @IsString()
   @IsOptional()
   OPENAI_API_KEY?: string;
+
+  @IsIn(['openai', 'gemini'])
+  @IsOptional()
+  LLM_DEFAULT_PROVIDER: 'openai' | 'gemini' = 'openai';
+
+  @IsString()
+  @IsOptional()
+  OPENAI_DEFAULT_MODEL: string = 'gpt-4.1-mini';
+
+  @IsString()
+  @IsOptional()
+  GEMINI_DEFAULT_MODEL: string = 'gemini-flash-lite-latest';
+
+  @IsString()
+  @IsOptional()
+  OPENAI_VECTOR_STORE_ID?: string;
 }
 
 export function validateConfig(config: Record<string, unknown>) {

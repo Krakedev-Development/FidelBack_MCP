@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { McpModule } from './modules/mcp/mcp.module';
 import { CrmModule } from './modules/crm/crm.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ChatModule } from './modules/chat/chat.module';
     McpModule,
     CrmModule,
     ChatModule,
+    KnowledgeModule,
   ],
   providers: [
     {

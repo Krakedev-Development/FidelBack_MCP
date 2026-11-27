@@ -47,10 +47,13 @@ export class ChatController {
     @Headers('x-tenant-key') tenantApiKey?: string,
     @Headers('x-tenant-id') tenantHeaderSlug?: string,
   ) {
+    const provider = dto.provider || this.llmGateway.getDefaultProvider();
+    const model = this.llmGateway.normalizeModelForProvider(provider, dto.model);
+
     return this.processInboundMessage.execute({
       ...dto,
-      provider: dto.provider || 'gemini',
-      model: dto.model || 'gemini-flash-lite-latest',
+      provider,
+      model,
       tenantApiKey,
       tenantSlug: dto.tenantSlug || tenantHeaderSlug,
     });

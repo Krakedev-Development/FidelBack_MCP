@@ -37,6 +37,9 @@ export interface LlmTurnInput {
   requiredFields: string[];
   incrementalSummary: string;
   adSummary?: string;
+  broadcastContext?: string;
+  vectorStoreId?: string | null;
+  useRagFirst?: boolean;
   recentHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
   userMessage: string;
 }
