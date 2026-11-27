@@ -628,8 +628,8 @@ export class ProcessInboundMessageUseCase {
         : null;
 
       const now = new Date();
-      const firstFollowUpAt =
-        data.controlState === 'AI_ACTIVE' ? new Date(now.getTime() + 15 * 60_000) : null;
+      // Seguimientos automáticos por inactividad deshabilitados por solicitud comercial.
+      const firstFollowUpAt = null;
 
       const conversation = await this.prisma.conversation.upsert({
         where: { sessionId: data.sessionId },
