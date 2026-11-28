@@ -9,7 +9,6 @@ import {
 import { CrmService } from '../../../crm/application/services/crm.service';
 import { OpenAiRagService } from '../../../knowledge/application/services/openai-rag.service';
 import { LlmGatewayAdapter } from '../../infrastructure/adapters/llm-gateway.adapter';
-import { FIDEL_GLOBAL_BEHAVIOR_MANUAL } from '../../domain/constants/fidel-global-behavior.constant';
 import {
   AdContextInput,
   ProductLineKey,
@@ -376,12 +375,12 @@ export class ProcessInboundMessageUseCase {
           .join('\n');
 
     const knowledgeSection = useRagFirst
-      ? `LÍNEAS DE NEGOCIO PARA CLASIFICACIÓN CRM:\n${ragCatalogSummary || '- General'}\n\nFUENTE PRINCIPAL DE CONOCIMIENTO (RAG VECTOR STORE ACTIVO - ${ragInfo.readyDocumentsCount} documento(s)):\n- PASO 1: Aplica obligatoriamente el MANUAL DE COMPORTAMIENTO GLOBAL de arriba en estilo, formato, extensión y flujo.\n- PASO 2: Identifica de qué producto o promoción trata la conversación y usa OBLIGATORIAMENTE file_search para extraer SOLO los datos reales de los documentos del RAG.\n- JERARQUÍA OBLIGATORIA: Ante cualquier diferencia de precios, fechas, horarios o promociones entre POLÍTICA Y REGLAS y los documentos recuperados por file_search (RAG), PREVALECEN SIEMPRE los documentos del RAG y las REGLAS APRENDIDAS activas.\n- PROHIBIDO responder con datos, precios, promociones o beneficios que NO aparezcan literalmente en los documentos recuperados para la fecha actual (${todayEcuador}).\n- Si una promoción o dato consultado no aparece vigente en los documentos del RAG, dilo con honestidad y escala a un asesor humano.`
+      ? `LÍNEAS DE NEGOCIO PARA CLASIFICACIÓN CRM:\n${ragCatalogSummary || '- General'}\n\nFUENTE PRINCIPAL DE CONOCIMIENTO (RAG VECTOR STORE ACTIVO - ${ragInfo.readyDocumentsCount} documento(s)):\n- PASO 1: Aplica obligatoriamente el MANUAL DE COMPORTAMIENTO GLOBAL Y POLÍTICAS de arriba en tono, extensión, formato y flujo.\n- PASO 2: Identifica de qué producto o promoción trata la conversación y usa OBLIGATORIAMENTE file_search para extraer SOLO los datos reales de los documentos del RAG.\n- JERARQUÍA OBLIGATORIA: Ante cualquier diferencia de precios, fechas, horarios o promociones entre POLÍTICAS y los documentos recuperados por file_search (RAG), PREVALECEN SIEMPRE los documentos del RAG y las REGLAS APRENDIDAS activas.\n- PROHIBIDO responder con datos, precios, promociones o beneficios que NO aparezcan literalmente en los documentos recuperados para la fecha actual (${todayEcuador}).\n- Si una promoción o dato consultado no aparece vigente en los documentos del RAG, dilo con honestidad y escala a un asesor humano.`
       : `CATÁLOGO / CONOCIMIENTO:\n${allBrochuresContext}`;
 
     const systemPrompt =
       params.customSystemPrompt?.trim() ||
-      `Eres ${tenantConfig.tenant.agentName}, ${tenantConfig.tenant.agentRole} de la empresa "${tenantConfig.tenant.name}" (tenant: ${resolvedTenantSlug}).\nFECHA ACTUAL (Ecuador): ${todayEcuador} — úsala para validar si una promoción o fecha de inicio está vigente.\nTONO: ${tenantConfig.tenant.tone}\n\nMANUAL DE COMPORTAMIENTO GLOBAL OBLIGATORIO (APLICAR EN CADA RESPUESTA):\n${FIDEL_GLOBAL_BEHAVIOR_MANUAL}\n\nPOLÍTICA Y REGLAS DE LA EMPRESA:\n${tenantConfig.tenant.globalRules}\n\nREGLA OBLIGATORIA DE FIDELIDAD DE DATOS:\n- Obedece estrictamente los datos confirmados en los documentos del RAG (file_search), CATÁLOGO / CONOCIMIENTO y REGLAS APRENDIDAS.\n- NUNCA inventes fechas de inicio, duraciones, horarios, precios, promociones, descuentos, cuentas bancarias, links de pago ni inclusión de vouchers.\n\n${knowledgeSection}${activeRulesBlock}`;
+      `Eres ${tenantConfig.tenant.agentName}, ${tenantConfig.tenant.agentRole} de la empresa "${tenantConfig.tenant.name}" (tenant: ${resolvedTenantSlug}).\nFECHA ACTUAL (Ecuador): ${todayEcuador} — úsala para validar si una promoción o fecha de inicio está vigente.\nTONO: ${tenantConfig.tenant.tone}\n\nMANUAL DE COMPORTAMIENTO GLOBAL Y POLÍTICAS (OBLIGATORIO EN CADA RESPUESTA):\n${tenantConfig.tenant.globalRules}\n\nREGLA OBLIGATORIA DE FIDELIDAD DE DATOS:\n- Obedece estrictamente los datos confirmados en los documentos del RAG (file_search), CATÁLOGO / CONOCIMIENTO y REGLAS APRENDIDAS.\n- NUNCA inventes fechas de inicio, duraciones, horarios, precios, promociones, descuentos, cuentas bancarias, links de pago ni inclusión de vouchers.\n\n${knowledgeSection}${activeRulesBlock}`;
 
     const recentHistory = session.history
       .slice(-8, -1)
@@ -628,8 +627,8 @@ export class ProcessInboundMessageUseCase {
         : null;
 
       const now = new Date();
-      const firstFollowUpAt =
-        data.controlState === 'AI_ACTIVE' ? new Date(now.getTime() + 15 * 60_000) : null;
+      // Seguimientos automáticos por inactividad deshabilitados por solicitud comercial.
+      const firstFollowUpAt = null;
 
       const conversation = await this.prisma.conversation.upsert({
         where: { sessionId: data.sessionId },
@@ -733,7 +732,7 @@ export class ProcessInboundMessageUseCase {
       timeZone: 'America/Guayaquil',
     }).format(new Date());
 
-    const systemPrompt = `Eres ${tenantConfig.tenant.agentName}, ${tenantConfig.tenant.agentRole} de la empresa "${tenantConfig.tenant.name}" (tenant: ${resolvedTenantSlug}).\nFECHA ACTUAL (Ecuador): ${todayEcuador}\nTONO: ${tenantConfig.tenant.tone}\n\nMANUAL DE COMPORTAMIENTO GLOBAL OBLIGATORIO (APLICAR EN CADA RESPUESTA):\n${FIDEL_GLOBAL_BEHAVIOR_MANUAL}\n\nPOLÍTICA Y REGLAS DE LA EMPRESA:\n${tenantConfig.tenant.globalRules}\n\n${useRagFirst ? 'Usa file_search (RAG Vector Store) para consultar únicamente datos de productos, promociones, precios y condiciones de la conversación.' : `CATÁLOGO / CONOCIMIENTO:\n${allBrochuresContext}`}${activeRulesBlock}`;
+    const systemPrompt = `Eres ${tenantConfig.tenant.agentName}, ${tenantConfig.tenant.agentRole} de la empresa "${tenantConfig.tenant.name}" (tenant: ${resolvedTenantSlug}).\nFECHA ACTUAL (Ecuador): ${todayEcuador}\nTONO: ${tenantConfig.tenant.tone}\n\nMANUAL DE COMPORTAMIENTO GLOBAL Y POLÍTICAS (OBLIGATORIO EN CADA RESPUESTA):\n${tenantConfig.tenant.globalRules}\n\n${useRagFirst ? 'Usa file_search (RAG Vector Store) para consultar únicamente datos de productos, promociones, precios y condiciones de la conversación.' : `CATÁLOGO / CONOCIMIENTO:\n${allBrochuresContext}`}${activeRulesBlock}`;
 
     const recentHistory = (params.history || []).slice(-12).map((h) => ({
       role: (h.role === 'fidel' ? 'assistant' : 'user') as 'user' | 'assistant',

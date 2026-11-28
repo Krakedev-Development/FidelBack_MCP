@@ -121,86 +121,20 @@ export class McpRegistryService {
           const count = Math.max(1, Number(args.participants || 1));
           const paymentMode = String(args.paymentMode || "contado");
 
-          if (productKey === "krakedev_academy") {
-            const enrollmentFee = 40;
-            const firstModule = 280;
-            const totalPerStudent = enrollmentFee + firstModule;
-            const totalInvestment = totalPerStudent * count;
-
-            const result: McpToolExecutionResult = {
-              toolName,
-              success: true,
-              timestamp,
-              data: {
-                productKey,
-                participants: count,
-                paymentMode,
-                enrollmentUsd: enrollmentFee,
-                firstModuleUsd: firstModule,
-                totalPerStudentUsd: totalPerStudent,
-                totalInvestmentUsd: totalInvestment,
-                modality:
-                  "100% Online, interactiva y con acompañamiento cercano",
-              },
-              message: `Cotización Krakedev (Oferta promocional): Matrícula $${enrollmentFee} USD + Primer módulo $${firstModule} USD (Total por estudiante: $${totalPerStudent} USD).`,
-            };
-            this.recordExecution(result);
-            return result;
-          } else if (productKey === "aws_certifications") {
-            const regularPriceUsd = 235;
-            const blackFridayPriceUsd = 165;
-
-            const result: McpToolExecutionResult = {
-              toolName,
-              success: true,
-              timestamp,
-              data: {
-                productKey,
-                programName:
-                  "Preparación AWS Certified Solutions Architect – Associate",
-                participants: count,
-                paymentMode,
-                regularPriceUsd,
-                blackFridayPriceUsd,
-                promoValidUntil: "30 de noviembre",
-                duration: "8 semanas",
-                modality: "Clases 100 % en vivo",
-                plannedStartDate: "11 de enero de 2027",
-                schedules: {
-                  morning: "Lunes, miércoles y viernes | 07h00–08h20",
-                  evening: "Martes y jueves | 19h30–21h30",
-                },
-                includesVoucher: false,
-                paymentMethods: [
-                  "Transferencia bancaria",
-                  "Tarjeta de crédito",
-                  "Link de pago",
-                ],
-                syllabusUrl:
-                  "https://drive.google.com/file/d/1godC01fw8ztyh0550ZgwwAyYgSKYnRp6/view?usp=sharing",
-              },
-              message: `Preparación AWS Certified Solutions Architect – Associate: Precio regular $${regularPriceUsd} USD; promoción Black Friday $${blackFridayPriceUsd} USD (ahorro de $70, vigente hasta el 30 de noviembre). Duración: 8 semanas, clases 100 % en vivo, inicio previsto 11 de enero de 2027. Voucher del examen oficial NO incluido.`,
-            };
-            this.recordExecution(result);
-            return result;
-          } else {
-            const customResult: McpToolExecutionResult = {
-              toolName,
-              success: true,
-              timestamp,
-              data: {
-                productKey,
-                quotationType: "NO_FIXED_PRICE",
-                recommendation:
-                  productKey === "ai_assistants_b2b"
-                    ? "Indagar proceso a automatizar y proponer sesión técnica breve (accesos anticipados / piloto a medida)."
-                    : "No dar precios cerrados; levantar requerimientos específicos en reunión con especialista.",
-              },
-              message: `Sin precio cerrado para ${productKey}: requiere levantamiento técnico/comercial con especialista.`,
-            };
-            this.recordExecution(customResult);
-            return customResult;
-          }
+          const result: McpToolExecutionResult = {
+            toolName,
+            success: true,
+            timestamp,
+            data: {
+              productKey,
+              participants: count,
+              paymentMode,
+              source: "OPENAI_VECTOR_STORE_RAG",
+            },
+            message: `Consultar los documentos vigentes del Vector Store (file_search) para precios y promociones actualizadas de ${productKey}.`,
+          };
+          this.recordExecution(result);
+          return result;
         }
 
         case "agendar_cita": {
